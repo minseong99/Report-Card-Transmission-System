@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  db:
+    ## 8.0選択理由
+    # 1. LTS
+    # 2. 情報量
+    image: mysql:8.0 # or 8.4
+    container_name: yobikou_db
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: yobikou_system
+      MYSQL_USER: user
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: always
+
+  backend:
+    build: ./backend
+    container_name: yobikou_backend
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: mysql+pymysql://user:${DB_PASSWORD}@db:3306/yobikou_system
+    depends_on:
+      - db
+    volumes:
+      - ./backend:/app
+  frontend:
+    build: ./frontend
+    container_name: yobikou_frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    stdin_open: true  # Reactのホットリロード
+    tty: true
+
+volumes:
+  db_data:
