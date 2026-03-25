@@ -58,6 +58,11 @@ def seed_data():
             })
         print("20名の講師データ生成完了")
 
+        #選択科目のIDリストを取得
+        elective_subjects = conn.execute(text("SELECT id FROM 科目 WHERE 科目名 IN ('生命工学', '地球科学', '物理', '化学')")).fetchall()
+        elective_ids = [row.id for row in elective_subjects]
+
+
         # 保護者と学生の生成(1000名)
         for i in range (1, 1000):
             # 保護者
@@ -70,16 +75,18 @@ def seed_data():
                 "birth": fake.date_of_birth(minimum_age=25, maximum_age=70)
             }).lastrowid
 
+            chosen_electives = random.sample(elective_ids, 2)
             # 学生
-            class_id = random.randint(1, 20)
+            class_id = (i // 50) + 1
             conn.execute(text("""
-                INSERT INTO 学生 (苗字, 名前, 電話番号, メール, 生年月日, クラス_id, 保護者_id)
-                VALUES (:last_name, :first_name, :phone, :email, :birth, :class_id, :parent_id)
+                INSERT INTO 学生 (苗字, 名前, 電話番号, メール, 生年月日, クラス_id, 保護者_id, 選択科目1_id, 選択科目2_id)
+                VALUES (:last_name, :first_name, :phone, :email, :birth, :class_id, :parent_id, :elec1, :elec2)
             """), {
                 "last_name": fake.last_name(), "first_name": fake.first_name(),
                 "phone": fake.phone_number(), "email": fake.unique.email(),
                 "birth": fake.date_of_birth(minimum_age=19, maximum_age=23),
-                "class_id": class_id, "parent_id": parent_id
+                "class_id": class_id, "parent_id": parent_id, "elec1": chosen_electives[0], 
+                "elec2": chosen_electives[1]
             })
         print("1000名の保護者と学生データが生成されました")
         print("全てのダミーデータ生成が完了しました。")

@@ -28,6 +28,13 @@ CREATE TABLE `保護者` (
     `生年月日` DATE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE `科目`(
+    `id` INT AUTO_INCREMENT PRIMARY KEY, 
+    `科目名` VARCHAR(100) NOT NULL,
+    `科目区分` VARCHAR (50)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
 CREATE TABLE `学生`(
     `id` INT AUTO_INCREMENT PRIMARY KEY, 
     `苗字` VARCHAR(100) NOT NULL,
@@ -37,8 +44,12 @@ CREATE TABLE `学生`(
     `生年月日` DATE NOT NULL,
     `クラス_id` INT,
     `保護者_id` INT,
+    `選択科目1_id` INT,
+    `選択科目2_id` INT,
     FOREIGN KEY (`クラス_id`) REFERENCES `クラス`(`id`),
-    FOREIGN KEY (`保護者_id`) REFERENCES `保護者`(`id`)
+    FOREIGN KEY (`保護者_id`) REFERENCES `保護者`(`id`),
+    FOREIGN KEY (`選択科目1_id`) REFERENCES `科目`(`id`),
+    FOREIGN KEY (`選択科目2_id`) REFERENCES `科目`(`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE `成績表`(
@@ -55,20 +66,16 @@ CREATE TABLE `成績表`(
     FOREIGN KEY (`学生_id`) REFERENCES `学生`(`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE `科目`(
-    `id` INT AUTO_INCREMENT PRIMARY KEY, 
-    `科目名` VARCHAR(100) NOT NULL,
-    `科目区分` VARCHAR (50)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 
 CREATE TABLE `成績詳細`(
     `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `点数` INT、
-    `偏差値` DECIMAL(5,2)、
-    `順位` INT 
+    `点数` INT,
+    `偏差値` DECIMAL(5,2), 
+    `順位` INT, 
     `科目_id` INT,
     `成績表_id` INT,
-    FOREIGN KEY (`科目_id`) REFERENCES `科目`(`id`)
+    FOREIGN KEY (`科目_id`) REFERENCES `科目`(`id`),
     FOREIGN KEY (`成績表_id`) REFERENCES `成績表`(`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -81,13 +88,12 @@ CREATE TABLE `送信履歴`(
     `送信ステータス` VARCHAR(50) NOT NULL,
     `送信チャネル` JSON,
     `送信内容` TEXT,
-    FOREIGN KEY (`講師_id`) REFERENCES `講師`(`id`)
-    FOREIGN KEY (`保護者_id`) REFERENCES `保護者`(`id`)
+    FOREIGN KEY (`講師_id`) REFERENCES `講師`(`id`),
+    FOREIGN KEY (`保護者_id`) REFERENCES `保護者`(`id`),
     FOREIGN KEY (`成績表_id`) REFERENCES `成績表`(`id`)
 
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
---　科目の初期データ
 INSERT INTO `科目` (`科目名`) VALUES 
-(`国語`), (`数学`), (`英語`), (`歴史`), (`生命工学`), 
-(`地球科学`), (`物理`), (`科学`); 
+('国語'), ('数学'), ('英語'), ('歴史'), ('生命工学'), 
+('地球科学'), ('物理'), ('科学'); 
