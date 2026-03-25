@@ -22,8 +22,8 @@ def generate_drafts_background(class_id: int, exam_date: str):
 @app.post("/api/drafts/alam-and-start-generation")
 def trigger_draft_generation(class_id: int, exam_date: str, background_tasks: BackgroundTasks):
     """
-    アラームと生成表草案生成のトリガーとなるエンドポイント
-    バックラウンドタスクを登録し、即座にレスボインスを返す。
+    講師への（フロントエンド）アラート通知を発生し、
+    FastAPI BackgroundTasksを利用して、時間がかかる成績表草案生成の処理を非同期化するAPIエンドポイント
     """
 
     #　成績表草案生成をバックグラウンドに投げる
