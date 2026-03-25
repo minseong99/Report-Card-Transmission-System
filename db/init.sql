@@ -37,7 +37,7 @@ CREATE TABLE `学生`(
     `生年月日` DATE NOT NULL,
     `クラス_id` INT,
     `保護者_id` INT,
-    FOREIGN KEY (`クラス_id`) REFERENCES `クラス`(`id`)
+    FOREIGN KEY (`クラス_id`) REFERENCES `クラス`(`id`),
     FOREIGN KEY (`保護者_id`) REFERENCES `保護者`(`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 

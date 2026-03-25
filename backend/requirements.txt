@@ -6,3 +6,8 @@ uvicorn[standard]==0.29.0   # websever
 sqlalchemy==2.0.28          # sql文をpython文で使わせる
 pymysql==1.1.0              # DB通信
 cryptography==42.0.5        # DB パスワード暗語化
+
+# 開発・テスト用
+faker==24.4.0
+pytest==8.1.1
+httpx==0.27.0

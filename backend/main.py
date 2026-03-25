@@ -36,6 +36,6 @@ def trigger_draft_generation(class_id: int, exam_date: str, background_tasks: Ba
     )
 
     return {
-        "status": "processing",
+        "status": "success",
         "message": notification_message,
     }
