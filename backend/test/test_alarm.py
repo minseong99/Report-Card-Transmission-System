@@ -320,4 +320,4 @@ def test_api_1000_students_bulk_process():
             """), {"today": today}).scalar()
             assert processing_count >= student_count
             
-        print("🎉 1000名規模の負荷・結合テスト（統合順位＆クラス順位対応・完全版）、大成功です！")
+        print(" 1000名規模の負荷・結合テスト（統合順位＆クラス順位対応・完全版）、大成功です！")
