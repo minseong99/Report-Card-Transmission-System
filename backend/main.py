@@ -11,11 +11,11 @@ def generate_drafts_background(class_id: int, exam_date: str):
     """
     バックグラウンドで実行される重い処理: Comment, 推薦大学, 成績表生成
     """
-    print(f"[{class_id}]の成績情報・コメント・推薦大学生成開始...")
+    print(f"[クラス:{class_id}]の成績情報・コメント・推薦大学生成開始...")
 
     #time.sleep(5)
 
-    print(f"[{class_id}]の成績表草案の生成が完了しました。DBを更新します。")
+    print(f"[クラス:{class_id}]の成績表草案の生成が完了しました。DBを更新します。")
 
 # ========================================
 # システム内部のスケジューラから呼ばれるエンドポイント
