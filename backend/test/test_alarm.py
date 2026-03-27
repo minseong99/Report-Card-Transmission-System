@@ -176,13 +176,13 @@ def test_api_1000_students_bulk_process():
         """
         全校生徒（約1000名）の成績データが一気に投入された場合の負荷テスト。
         ※ 科目ごとの偏差値・順位だけでなく、
-        ※ 【総点に基づく統合順位（全校順位）とクラス順位】も計算して成績表に反映する完全版。
+        ※ 【総点に基づく統合順位（全校順位）とクラス順位】も計算して成績表に反映します。
         """
         today = datetime.date.today()
         from collections import defaultdict # クラスごとの順位計算に使用
 
         with engine.begin() as conn:
-            # 0. クリーンアップ処理 (省略せずにそのまま使用)
+            # 0. クリーンアップ処理 
             conn.execute(text("""
                 DELETE d FROM 成績詳細 d
                 JOIN 成績表 s ON d.成績表_id = s.id
@@ -196,7 +196,7 @@ def test_api_1000_students_bulk_process():
             # 1. 学生データの取得
             students = conn.execute(text("SELECT id, クラス_id, 選択科目1_id, 選択科目2_id FROM 学生")).fetchall()
             student_count = len(students)
-            assert student_count > 0, "学生データが0件です！"
+            assert student_count > 0, "学生データが0件です"
 
             mandatory_subjects = conn.execute(text("""
                 SELECT id FROM 科目 WHERE 科目名 IN ('国語', '英語', '数学', '歴史')
@@ -207,11 +207,11 @@ def test_api_1000_students_bulk_process():
             print("1000名規模の科目別偏差値・順位、および【総点ベースの全校・クラス順位】を計算します...")
 
             subject_scores = {}
-            # 追加: 総点による順位計算のためのリスト
-            student_totals = [] 
+            student_totals = [] # 総点による順位計算のためのリストb
 
             # 2-1. 成績表の作成とランダム点数生成
             for student in students:
+                # 成績表テーブルにデータ入力
                 result = conn.execute(text("""
                     INSERT INTO 成績表 (学生_id, 受験者数, 実施日, 確認ステータス) 
                     VALUES (:student_id, :total_students, :exam_date, '未確認')
@@ -230,7 +230,7 @@ def test_api_1000_students_bulk_process():
                     if sub_id not in subject_scores:
                         subject_scores[sub_id] = []
                     
-                    score = random.randint(20, 100)
+                    score = random.randint(80, 100)
                     total_score += score # 総点に加算
                     
                     subject_scores[sub_id].append({

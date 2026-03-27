@@ -30,16 +30,22 @@ services:
       - db
     volumes:
       - ./backend:/app
-  # frontend:
-  #   build: ./frontend
-  #   container_name: yobikou_frontend
-  #   ports:
-  #     - "3000:3000"
-  #   volumes:
-  #     - ./frontend:/app
-  #     - /app/node_modules
-  #   stdin_open: true  # Reactのホットリロード
-  #   tty: true
+  frontend:
+    build: 
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: yobikou_frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    stdin_open: true  # Reactのホットリロード
+    environment:
+      - CHOKIDAR_USEPOLLING=true # Docker環境下でのホットリロード
+    tty: true
+    depends_on:
+      - backend
 
 volumes:
   db_data:
