@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import Login from './pages/Login';
+import Dashboard from './pages/Dashboard';
 
 function App() {
     // 現在ログインしている講師ID
@@ -31,26 +32,23 @@ function App() {
     }
 
     return(
-        <div>
-            {!loggedInTeacher ? (<Login onLoginSuccess={handleLoginSuccess}/>
+        <div style={{padding: '20px', minHeight: '100vh', backgroundColor: '#f4f7f6'}}>
+            {!loggedInTeacher ? 
+                (<Login onLoginSuccess={handleLoginSuccess}/>
             ) : (
                 <div style={{ padding: '40px', textAlign: 'center', marginTop: '50px'}}>
-                    <h1>ログイン成功</h1>
-                    <p style={{ fontSize: '20px', color: '#2c3e50', marginTop: '15px'}}>
-                        ようこそ, <strong>{loggedInTeacher.name}</strong>先生
-                    </p>
-                    
-                    <p style={{ fontSize: '16px', color: '#7f8c8d', marginTop: '5px'}}>
-                        担当クラス: {loggedInTeacher.class_id}組
-                    </p>
+                    <h1>成績表送信システム</h1>
                     {/* logout button */}
-                    <button
-                        onClick={handleLogout}
-                        style={{ marginTop: '20px', padding: '10px 20px', cursor: 'pointer'}}
-                    >
-                        ログアウト
-                    </button>
+                    <div style={{display: 'flex', justifyContent: 'flex-end', marginBottom: '20px', maxWidth: '800px', margin: '0 auto 20px auto'}}>
+                        <button
+                            onClick={handleLogout}
+                            style={{ padding: '8px 16px', backgroundColor: '#3822c5', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}
+                        >
+                            ログアウト
+                        </button>
+                    </div>
                     {/*Todo: 成績アラームを受信するdashboardコンポナント */}
+                    <Dashboard teacher={loggedInTeacher}/>
                 </div> 
             )}
         </div>
