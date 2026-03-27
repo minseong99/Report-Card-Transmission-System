@@ -1,6 +1,10 @@
-from fastapi import FastAPI, BackgroundTasks
+from fastapi import FastAPI, BackgroundTasks, HTTPException
 import time
 from monitor import check_new_scores
+from pydantic import BaseModel
+from sqlalchemy import text, create_engine
+from fastapi.middleware.cors import CORSMiddleware # フロントエンド通信許容
+import os
 
 app = FastAPI(title="成績表送信システム API")
 
@@ -52,3 +56,54 @@ def trigger_draft_generation(background_tasks: BackgroundTasks):
         "status": "success",
         "alerts": alerts,
     }
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+# ========================================
+# ログインAPIエンドポイント
+# ========================================
+class LoginRequest(BaseModel):
+    login_id: str
+    password: str
+
+DB_URL = os.environ.get("DATABASE_URL")
+engine = create_engine(DB_URL)
+
+
+@app.post("/api/auth/login")
+def login(request: LoginRequest):
+    """
+    講師のログイン認証のAPIエンドポイント
+    入力されたIDとパスワードをDBと比べる。
+    """
+    with engine.connect() as conn:
+        query = text("""
+            SELECT id, 苗字, 名前, 担当クラス_id
+            FROM 講師
+            WHERE ログイン_id = :login_id AND パスワード = :password
+        """)
+
+        teacher = conn.execute(query, {
+            "login_id": request.login_id,
+            "password": request.password
+        }).fetchone()
+
+        print (teacher);
+        # 認証成功
+        if teacher:
+            return {
+                "status": "success",
+                "teacher": {
+                    "id" : teacher.id,
+                    "name" : f"{teacher.苗字} {teacher.名前}",
+                    "class_id" : teacher.担当クラス_id
+                }
+            }
+        else:
+            raise HTTPException(status_code=401, detail="IDまたはパスワードが間違っています。")

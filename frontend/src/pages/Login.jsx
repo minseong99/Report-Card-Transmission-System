@@ -22,19 +22,29 @@ export default function Login ({ onLoginSuccess }) {
         setIsLoding(true);
 
         try {
-            // TODO: 実際のバックエンドAPIにRequestを送る
-            console.log('API通信データ：', {login_id: loginId,password});
+            //実際のバックエンドAPIにRequestを送る
+            const response = await fetch('http://localhost:8000/api/auth/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type':'application/json',
+                },
+                body: JSON.stringify({
+                    login_id: loginId,
+                    password: password
+                }),
+            });
 
-            await new Promise((resolve) => setTimeout(resolve, 1000));
-
-            // test 
-            if (loginId.startsWith('teacher_')) {
-                onLoginSuccess(loginId); // 成功をApp.jsxに通知
-            } else {
-                setErrorMessage('IDまたはパスワードが間違っています。')
+            if (response.ok){
+                const data = await response.json();
+                console.log("ログイン成功:", data);
+                onLoginSuccess(data.teacher);
+            } else{
+                const errorData = await response.json();
+                setErrorMessage(errorData.detail || 'IDまたはパスワードが間違っています。');
             }
         } catch (error) {
-            setErrorMessage('サーバとの通信に失敗しました。');
+            console.error('API通信エラー:' ,error);
+            setErrorMessage('サーバとの通信に失敗しました。バックエンドを起動しているか確認してください。');
         } finally {
             setIsLoding(false);
         }
