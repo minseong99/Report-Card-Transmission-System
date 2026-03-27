@@ -36,7 +36,11 @@ export default function Login ({ onLoginSuccess }) {
 
             if (response.ok){
                 const data = await response.json();
-                console.log("ログイン成功:", data);
+                console.log("ログイン成功, 発行されたトークン", data.access_token);
+                
+                // session 
+                localStorage.setItem('token', data.access_token);
+                localStorage.setItem('teacher', JSON.stringify(data.teacher))
                 onLoginSuccess(data.teacher);
             } else{
                 const errorData = await response.json();

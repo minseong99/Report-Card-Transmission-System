@@ -11,3 +11,13 @@ cryptography==42.0.5        # DB パスワード暗語化
 faker==24.4.0
 pytest==8.1.1
 httpx==0.27.0
+
+# ハッシュ暗語化
+passlib[bcrypt]==1.7.4
+bcrypt==3.2.2
+
+# JWT(session)
+PyJWT==2.8.0
+
+# 環境変数
+python-dotenv==1.0.1

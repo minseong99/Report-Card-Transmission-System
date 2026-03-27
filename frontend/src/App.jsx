@@ -1,12 +1,27 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Login from './pages/Login';
 
 function App() {
     // 現在ログインしている講師ID
     const [loggedInTeacher, setLoggedInTeacher] = useState(null);
 
-    const handleLoginSuccess = (teacerData) => {
-        setLoggedInTeacher(teacerData);
+    // login session 維持
+    useEffect(() => {
+        const savedTeacher = localStorage.getItem('teacher');
+        const token = localStorage.getItem('token');
+
+        if (savedTeacher && token) {
+            try {
+                const teacherData = JSON.parse(savedTeacher);
+                setLoggedInTeacher(teacherData);
+            }catch (error) {
+                console.log("local storage data parsing error: ", error);
+            }
+        }
+    }, []); // 最小のレンダリングに一度だけ実行する
+
+    const handleLoginSuccess = (teacherData) => {
+        setLoggedInTeacher(teacherData);
     }
 
     return(
