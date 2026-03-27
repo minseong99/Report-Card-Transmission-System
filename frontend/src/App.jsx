@@ -24,6 +24,12 @@ function App() {
         setLoggedInTeacher(teacherData);
     }
 
+    const handleLogout = () => {
+        localStorage.removeItem('token');
+        localStorage.removeItem('teacher');
+        setLoggedInTeacher(null);
+    }
+
     return(
         <div>
             {!loggedInTeacher ? (<Login onLoginSuccess={handleLoginSuccess}/>
@@ -37,6 +43,13 @@ function App() {
                     <p style={{ fontSize: '16px', color: '#7f8c8d', marginTop: '5px'}}>
                         担当クラス: {loggedInTeacher.class_id}組
                     </p>
+                    {/* logout button */}
+                    <button
+                        onClick={handleLogout}
+                        style={{ marginTop: '20px', padding: '10px 20px', cursor: 'pointer'}}
+                    >
+                        ログアウト
+                    </button>
                     {/*Todo: 成績アラームを受信するdashboardコンポナント */}
                 </div> 
             )}
