@@ -28,7 +28,7 @@ export default function Login ({ onLoginSuccess }) {
             await new Promise((resolve) => setTimeout(resolve, 1000));
 
             // test 
-            if (loginId.startWith('teacher_')) {
+            if (loginId.startsWith('teacher_')) {
                 onLoginSuccess(loginId); // 成功をApp.jsxに通知
             } else {
                 setErrorMessage('IDまたはパスワードが間違っています。')

@@ -11,7 +11,7 @@ function App() {
 
     return(
         <div>
-            {!loggedInTeacherId ? (<Login onLoginSucess={handleLoginSuccess}/>
+            {!loggedInTeacherId ? (<Login onLoginSuccess={handleLoginSuccess}/>
             ) : (
                 <div style={{ padding: '20px', textAlign: 'center', marginTop: '50px'}}>
                     <h1>ログイン成功</h1>
