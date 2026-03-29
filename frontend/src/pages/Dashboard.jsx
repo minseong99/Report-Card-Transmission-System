@@ -122,7 +122,7 @@ export default function Dashboard({teacher}) {
                 {/* 右側 */}
                 <section className="main-content">
                     <div className="content-header">
-                        <h3>成績表一覧 {currentExamDate && `(${currentExamDate} 実施分)`}</h3>
+                        <h3>成績草案一覧 {currentExamDate && `(${currentExamDate} 実施)`}</h3>
                         
                         {activeTab === 'completed' && (
                             <button 
