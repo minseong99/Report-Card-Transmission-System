@@ -42,21 +42,27 @@ export default function Dashboard({teacher}) {
                 console.error("scanner通信エラー:", error);
             }
         };
-        const intervalID = setInterval(checkStatus, 60000); //１分ごと
+        const intervalID = setInterval(checkStatus, 3000); //３秒ごと
         checkStatus(); 
         // ログアウトしたり、画面を閉じたら監視停止
         return () => clearInterval(intervalID);    
     }, [teacher.class_id]);
 
-    useEffect(() => {
+useEffect(() => {
         const fetchDrafts = async () => {
             try {
-                const response = await fetch(`http://localhost:8000/api/drafts/preview/${teacher.class_id}`,{
-                    headers: {'Authorization': `Bearer ${localStorage.getItem('token')}`}
+                // Cache-bursting 
+                const response = await fetch(`http://localhost:8000/api/drafts/preview/${teacher.class_id}?t=${new Date().getTime()}`,{
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                        'Cache-Control': 'no-cache'
+                    },
+                    cache: 'no-store'
                 });
                 if(response.ok) {
                     const result = await response.json();
-                    if (result.data && result.data.length > 0) {
+                    if (result.data) {
                         setStudentsData(result.data);
                         setCurrentExamDate(result.exam_date);
                     }
@@ -111,7 +117,7 @@ export default function Dashboard({teacher}) {
                                 alarms.map((alarm) => (
                                     <div key={alarm.id} className={`alert-box ${alarm.type}`}>
                                         <strong>{alarm.message}</strong>
-                                        <p>自動生成が終わるまでお待ちください...</p>
+                                        <p>成績表草案を確認して成績表を生成してください。</p>
                                     </div>
                                 ))
                             )}
