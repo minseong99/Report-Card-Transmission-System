@@ -65,6 +65,15 @@ s3_client = boto3.client(
         s3={'addressing_style': 'path'}
     )
 )
+s3_client_external = boto3.client( # 保護者用
+    's3',
+    endpoint_url='http://localhost:9000', 
+    aws_access_key_id=access_key_id,
+    aws_secret_access_key=secret_access_key,
+    region_name='us-east-1',
+    config=Config(signature_version='s3v4', s3={'addressing_style': 'path'})
+)
+
 BUCKET_NAME = "report-cards"
 
 def generate_and_upload_pdf(class_id: int, exam_date: str, student_info: dict, 
@@ -265,4 +274,15 @@ def generate_and_upload_pdf(class_id: int, exam_date: str, student_info: dict,
         ExtraArgs={'ContentType' : 'application/pdf'}
     )
 
-    return f"http://localhost:9000/{BUCKET_NAME}/{s3_key}"
+    db_url = f"http://localhost:9000/{BUCKET_NAME}/{s3_key}"
+    presigned_url = s3_client_external.generate_presigned_url(
+        'get_object',
+        Params={'Bucket': BUCKET_NAME, 'Key': s3_key},
+        ExpiresIn=604800
+    )
+    
+
+    return {
+        "db_url": db_url,
+        "presigned_url": presigned_url
+    }

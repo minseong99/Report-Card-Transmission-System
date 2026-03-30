@@ -81,10 +81,10 @@ def confirm_and_generate_report(request: ConfirmReportRequest, teacher: dict = D
             UPDATE 成績表
             SET 確認ステータス = '完了', s3_file_url = :file_url
             WHERE id = :score_id
-        """), {"file_url": file_url, "score_id": student_info["score_id"]})
+        """), {"file_url": file_url['db_url'], "score_id": student_info["score_id"]})
     
     return {
         "status" : "success",
         "message" : "成績表が正常に成績されました。",
-        "file_url" : file_url
+        "file_url" : file_url['presigned_url']
     }
