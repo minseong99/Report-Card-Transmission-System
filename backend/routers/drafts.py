@@ -1,8 +1,9 @@
-from fastapi import APIRouter, BackgroundTasks
-from monitor import check_new_scores
+from fastapi import APIRouter, BackgroundTasks, Depends
+from functions.monitor import check_new_scores
 import datetime
 from sqlalchemy import text
 from database import engine
+from functions.jwtToken_authentication import get_current_teacher
 
 router = APIRouter(prefix="/api/drafts", tags=["Drafts"])
 
@@ -56,14 +57,16 @@ def trigger_draft_generation(background_tasks: BackgroundTasks):
     }
 
 # ========================================
-# 成績に入る情報を見せるためのAPI
+# 成績に入る情報を見せるためのAPI（持続的にモニタリング)
 # ========================================
-@router.get("/preview/{class_id}")
-def get_class_draft_previews(class_id: int):
+@router.get("/preview")
+def get_class_draft_previews(teacher: dict = Depends(get_current_teacher)):
     """
     担当クラスの「直近25日以内」の試験データを取得し、
     今年1月からの成績推移を含めた完全なプレービューデータを返す。
     """
+
+    class_id = teacher["class_id"]
     current_year = datetime.date.today().year
     feb_first = f"{current_year}-01-01"
 

@@ -60,3 +60,4 @@ def login(request: LoginRequest):
                 "class_id": teacher.担当クラス_id
             }
         }
+    

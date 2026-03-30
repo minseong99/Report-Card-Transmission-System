@@ -20,7 +20,7 @@ export default function Dashboard({teacher}) {
             try {
                 // cache-bursting 適用　： 毎回のrequestが新しいもののようにする方法
                 const response = await fetch(`
-                    http://localhost:8000/api/notification/${teacher.class_id}?t=${new Date().getTime()}`, 
+                    http://localhost:8000/api/notification?t=${new Date().getTime()}`, 
                     {
                     method: 'GET',
                     headers: {
@@ -52,7 +52,7 @@ useEffect(() => {
         const fetchDrafts = async () => {
             try {
                 // Cache-bursting 
-                const response = await fetch(`http://localhost:8000/api/drafts/preview/${teacher.class_id}?t=${new Date().getTime()}`,{
+                const response = await fetch(`http://localhost:8000/api/drafts/preview?t=${new Date().getTime()}`,{
                     method: 'GET',
                     headers: {
                         'Authorization': `Bearer ${localStorage.getItem('token')}`,

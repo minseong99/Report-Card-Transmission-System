@@ -1,15 +1,18 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from sqlalchemy import text
 from database import engine
+from functions.jwtToken_authentication import get_current_teacher
 
 router = APIRouter(prefix="/api/notification", tags=["Notification"])
 
-@router.get("/{class_id}")
-def get_class_notifications(class_id: int):
+# 持続的に「採点が完了されてシステムに入力されるか」モニタリング
+@router.get("/")
+def get_class_notifications(teacher: dict = Depends(get_current_teacher)):
     """
     フルンとエンドが定期的にAPIを呼び出して、
     自分の担当クラスの成績表ステータスを確認する。
     """
+    class_id = teacher["class_id"]
     with engine.connect() as conn:
         query = text("""
                     SELECT 実施日, 確認ステータス, COUNT(成績表.id) as student_count
