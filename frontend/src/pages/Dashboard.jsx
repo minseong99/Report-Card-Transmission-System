@@ -287,6 +287,7 @@ useEffect(() => {
             {selectedStudent && (
                 <DraftPreview 
                     studentData={selectedStudent} 
+                    examDate={currentExamDate}
                     onClose={() => setSelectedStudent(null)} 
                 />
             )}
