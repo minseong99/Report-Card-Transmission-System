@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import './DraftPreview.css'; 
 
-export default function DraftPreview({ studentData, onClose }) {
+export default function DraftPreview({ studentData, examDate, onClose }) {
     const draftData = studentData;
     const studentSubjects = useMemo(() => {
         if (!draftData || !draftData.currentScores) return [];
@@ -64,7 +64,7 @@ export default function DraftPreview({ studentData, onClose }) {
             });
             if (response.ok) {
                 const result = await response.json();
-                alert(`${result.message}\n URL : ${result.file_url}`);
+                console.log(`${result.file_url}`);
                 onClose();
             }else {
                 const errorData = await response.json()
