@@ -41,7 +41,7 @@ export default function DraftPreview({ studentData, onClose }) {
 
 
     // コメントState
-    const [comment, setComment] = useState("【AI生成ドラフト】\n各科目でバランスよく得点できています。特に英語の伸びが顕著です。次回の模試に向けて数学の応用問題に注力しましょう。");
+    const [comment, setComment] = useState("\n各科目でバランスよく得点できています。特に英語の伸びが顕著です。次回の模試に向けて数学の応用問題に注力しましょう。");
     const [university, setUniversity] = useState("東京大学 理科一類 (B判定)\n早稲田大学 基幹理工学部 (A判定)");
     const [isGenerating, setIsGenerating] = useState(false);
 
