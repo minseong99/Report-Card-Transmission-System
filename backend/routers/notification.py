@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy import text
 from database import engine
-from functions.jwtToken_authentication import get_current_teacher
+from services.jwtToken_authentication import get_current_teacher
 
 router = APIRouter(prefix="/api/notification", tags=["Notification"])
 

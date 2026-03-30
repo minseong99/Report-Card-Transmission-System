@@ -21,3 +21,10 @@ PyJWT==2.8.0
 
 # 環境変数
 python-dotenv==1.0.1
+
+# minioというlocal object storageのため
+boto3==1.42.78
+# pdf 生成ライブラリ
+reportlab==4.1.0 
+# graph
+matplotlib==3.8.3

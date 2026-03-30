@@ -1,9 +1,9 @@
 from fastapi import APIRouter, BackgroundTasks, Depends
-from functions.monitor import check_new_scores
+from services.monitor import check_new_scores
 import datetime
 from sqlalchemy import text
 from database import engine
-from functions.jwtToken_authentication import get_current_teacher
+from services.jwtToken_authentication import get_current_teacher
 
 router = APIRouter(prefix="/api/drafts", tags=["Drafts"])
 
