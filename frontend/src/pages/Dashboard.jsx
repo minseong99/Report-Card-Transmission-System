@@ -109,7 +109,7 @@ useEffect(() => {
                 {/* 左側 */}
                 <aside className="sidebar">
                     <section className="status-card">
-                        <h3>クラスステータス</h3>
+                        <h3>アラーム</h3>
                         <div className="alarm-list">
                             {alarms.length === 0 ? (
                                 <div className="no-data">現在、処理中のデータはありません。</div>
@@ -238,10 +238,10 @@ useEffect(() => {
                                                         
                                                         {activeTab === 'pending' ? (
                                                             <button 
-                                                                style={{ padding: '6px 12px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+                                                                style={{ padding: '6px 12px', backgroundColor: '#3ea1b9', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}
                                                                 onClick={() => setSelectedStudent(student)}
                                                             >
-                                                                プレビュー確認
+                                                                プレビュー
                                                             </button>
                                                         ) : (
                                                             <span style={{ padding: '6px 12px', backgroundColor: '#e2e8f0', color: '#64748b', borderRadius: '4px', fontSize: '13px', fontWeight: 'bold' }}>

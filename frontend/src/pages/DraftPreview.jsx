@@ -50,7 +50,7 @@ export default function DraftPreview({ studentData, onClose }) {
         setIsGenerating(true);
         // PDF 成績　or DBストア
         setTimeout(() => {
-            alert("✅ 最終成績表の生成が完了しました！生徒への送信準備が整いました。");
+            alert("最終成績表の生成が完了しました！生徒への送信準備が整いました。");
             setIsGenerating(false);
             onClose(); // close
         }, 1500);
@@ -155,7 +155,7 @@ export default function DraftPreview({ studentData, onClose }) {
                         <div className="right-column">
                             <div className="section edit-section">
                                 <h3>推薦大学 (編集可)</h3>
-                                <p className="help-text">※AIが生成した草案です。必要に応じて修正してください。</p>
+                                <p className="help-text">※システムが生成した草案です。必要に応じて修正してください。</p>
                                 <textarea 
                                     value={university}
                                     onChange={(e) => setUniversity(e.target.value)}
@@ -165,7 +165,7 @@ export default function DraftPreview({ studentData, onClose }) {
 
                             <div className="section edit-section">
                                 <h3>講師コメント (編集可)</h3>
-                                <p className="help-text">※生徒の成績推移に基づくAI分析結果です。</p>
+                                <p className="help-text">※生徒の成績推移に基づく分析結果です。</p>
                                 <textarea 
                                     value={comment}
                                     onChange={(e) => setComment(e.target.value)}

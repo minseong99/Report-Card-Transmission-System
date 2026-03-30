@@ -31,24 +31,29 @@ function App() {
         setLoggedInTeacher(null);
     }
 
-    return(
-        <div style={{padding: '20px', minHeight: '100vh', backgroundColor: '#f4f7f6'}}>
+return(
+        <div style={{ minHeight: '100vh', backgroundColor: '#f4f7f6', margin: 0, padding: 0 }}>
             {!loggedInTeacher ? 
                 (<Login onLoginSuccess={handleLoginSuccess}/>
             ) : (
-                <div style={{ padding: '40px', textAlign: 'center', marginTop: '50px'}}>
-                    <h1>成績表送信システム</h1>
-                    {/* logout button */}
-                    <div style={{display: 'flex', justifyContent: 'flex-end', marginBottom: '20px', maxWidth: '800px', margin: '0 auto 20px auto'}}>
+                <div style={{ width: '100%' }}>
+                    
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px 30px', backgroundColor: 'white', borderBottom: '1px solid #e2e8f0' }}>
+                        <h1 style={{ margin: 0, fontSize: '22px', color: '#1e293b' }}>成績表送信システム</h1>
+                        
+                        {/* logout button */}
                         <button
                             onClick={handleLogout}
-                            style={{ padding: '8px 16px', backgroundColor: '#3822c5', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}
+                            style={{ padding: '8px 16px', backgroundColor: '#7f7d8e', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', transition: '0.2s' }}
                         >
                             ログアウト
                         </button>
                     </div>
-                    {/*Todo: 成績アラームを受信するdashboardコンポナント */}
-                    <Dashboard teacher={loggedInTeacher}/>
+
+                    {/*成績アラームを受信するdashboardコンポナント */}
+                    <div style={{ padding: '20px' }}>
+                        <Dashboard teacher={loggedInTeacher}/>
+                    </div>
                 </div> 
             )}
         </div>

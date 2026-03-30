@@ -1,15 +1,17 @@
 .dashboard-container {
-    max-width: 1200px; 
+    width: 100%; 
+    max-width: none;
+    min-height: 100vh;
     margin: 0 auto;
     background-color: #f8fafc;
-    border-radius: 12px;
+    border-radius: 0;
     box-shadow: 0 10px 30px rgba(0,0,0,0.05);
     overflow: hidden;
 }
 
 /* ヘッダー */
 .dashboard-header {
-    background-color: #a9b2c0;
+    background-color: #d0d4dc;
     color: white;
     padding: 20px 30px;
     display: flex;
@@ -17,7 +19,7 @@
     align-items: center;
 }
 .header-left h2 { margin: 0 0 8px 0; font-size: 22px; }
-.class-badge { background-color: #3b82f6; padding: 4px 12px; border-radius: 20px; font-size: 13px; font-weight: bold; }
+.class-badge { background-color: #a7a9ad; padding: 4px 12px; border-radius: 20px; font-size: 13px; font-weight: bold; }
 
 /* ライブ同期インジケーター */
 .live-status { display: flex; align-items: center; font-size: 14px; color: #000000; }
@@ -34,7 +36,7 @@
 
 /* 左サイドバー (通知) */
 .sidebar {
-    width: 320px;
+    width: 280px;
     flex-shrink: 0;
 }
 .status-card {
