@@ -1,23 +1,19 @@
 from fastapi import APIRouter, BackgroundTasks, Depends
 from services.monitor import check_new_scores
-from services.jwtToken_authentication import get_current_teacher
+from dependencies.auth import get_current_teacher # 🌟 core/dependencies に移動したauthをインポート
 from services.draft_service import get_preview_data
 
 router = APIRouter(prefix="/api/drafts", tags=["Drafts"])
 
-# ========================================
-# 成績表草案生成 (バックグラウンド)
-# ========================================
 def generate_drafts_background(class_id: int, exam_date: str):
     print(f"[クラス:{class_id}]の成績情報・コメント・推薦大学生成開始...")
-    #time.sleep(5)
     print(f"[クラス:{class_id}]の成績表草案の生成が完了しました。DBを更新します。")
 
-# ========================================
-# アラート＆生成トリガー
-# ========================================
 @router.post("/alam-and-start-generation")
 def trigger_draft_generation(background_tasks: BackgroundTasks):
+    """
+    新しい採点データを監視し、存在する場合は草案生成のバックグラウンドタスクをトリガーします。
+    """
     batches = check_new_scores()
     if not batches:
         return {"status": "success", "message": "新しい成績データはありません。", "alerts":[]}
@@ -33,15 +29,10 @@ def trigger_draft_generation(background_tasks: BackgroundTasks):
         })
     return {"status": "success", "alerts": alerts}
 
-# ========================================
-# プレビューAPI (🌟 Service呼び出しのみにスリム化！)
-# ========================================
 @router.get("/preview")
 def get_class_draft_previews(teacher: dict = Depends(get_current_teacher)):
     """
     担当クラスのプレビューデータを取得 (URL生成含む)
+    全ての複雑なロジックは draft_service に委譲しています。
     """
-    class_id = teacher["class_id"]
-    
-    # 全ての複雑なロジックは draft_service に委譲します
-    return get_preview_data(class_id)
+    return get_preview_data(teacher["class_id"])

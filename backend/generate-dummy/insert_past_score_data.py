@@ -1,8 +1,14 @@
 import argparse
 import datetime
 import random
+import sys
+import os
 from sqlalchemy import text
-from database import engine
+
+
+sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
+
+from core.database import engine
 
 def insert_past_exam(month: int):
     year = datetime.date.today().year
@@ -11,7 +17,7 @@ def insert_past_exam(month: int):
     with engine.begin() as conn:
         existing = conn.execute(text("SELECT id FROM 成績表 WHERE 実施日 = :exam_date LIMIT 1"), {"exam_date": exam_date}).fetchone()
         if existing:
-            print(f"⚠️ すでに {exam_date} のデータが存在します。削除してから再実行するか、別の月を指定してください。")
+            print(f"すでに {exam_date} のデータが存在します。削除してから再実行するか、別の月を指定してください。")
             return
 
         mandatory_subjects = conn.execute(text("""

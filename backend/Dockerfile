@@ -1,6 +1,9 @@
 # ベースイメージ
 FROM python:3.11-slim
 
+#__pycache__が生成されるのを防ぐ設定
+ENV PYTHONDONTWRITEBYTECODE 1
+
 # コンテナ内の作業Directory
 WORKDIR /app
 
