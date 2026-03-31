@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react';
 export function useAuth() {
     // 現在ログインしている講師情報
     const [loggedInTeacher, setLoggedInTeacher] = useState(null);
+    const [isAuthChecking, setIsAuthChecking] = useState(true); // セッション確認中の状態
 
     // 初回マウント時にセッション（ログイン状態）を復元
     useEffect(() => {
@@ -21,6 +22,7 @@ export function useAuth() {
                 console.error("Local storage data parsing error: ", error);
             }
         }
+        setIsAuthChecking(false); // 確認が完了したらローディング状態を解除
     }, []); // 依存配列が空なので、アプリ起動時に一度だけ実行される
 
     // ログイン成功時の処理
@@ -38,6 +40,7 @@ export function useAuth() {
 
     return {
         loggedInTeacher,
+        isAuthChecking,
         login,
         logout
     };
