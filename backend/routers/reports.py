@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 from sqlalchemy import text
 import datetime 
@@ -6,6 +6,7 @@ import datetime
 from database import engine
 from services.jwtToken_authentication import get_current_teacher
 from services.pdf_service import generate_and_upload_pdf
+from services.notification_service import process_batch_notifications
 
 router = APIRouter(prefix="/api/reports", tags=["Reports"])
 
@@ -87,4 +88,25 @@ def confirm_and_generate_report(request: ConfirmReportRequest, teacher: dict = D
         "status" : "success",
         "message" : "成績表が正常に成績されました。",
         "file_url" : file_url['presigned_url']
+    }
+
+
+class BatchSendRequest(BaseModel):
+    student_ids: list[int]
+    exam_date: str
+
+@router.post("/send-batch")
+def send_batch_reports(request: BatchSendRequest, background_tasks: BackgroundTasks):
+    if not request.student_ids:
+        raise HTTPException(status_code=400, detail="送信対象の生徒が選択されていません。")
+
+    background_tasks.add_task(
+        process_batch_notifications, 
+        student_ids=request.student_ids, 
+        exam_date=request.exam_date
+    )
+
+    return {
+        "status": "success",
+        "message": f"{len(request.student_ids)}件の成績表を保護者へ送信開始しました。"
     }

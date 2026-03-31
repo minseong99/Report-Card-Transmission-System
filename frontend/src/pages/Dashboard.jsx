@@ -124,6 +124,61 @@ export default function Dashboard({teacher}) {
         setSelectedStudent(null);
     };
 
+    const [showConfirmModal, setShowConfirmModal] = useState(false);
+    const [toastMessage, setToastMessage] = useState("");
+
+    const showToast = (message) => {
+        setToastMessage(message);
+        setTimeout(() => setToastMessage(""), 3000);
+    };
+
+    const handleBatchSendClick = () => {
+        setShowConfirmModal(true);
+    };
+
+    const executeBatchSend = async () => {
+        setShowConfirmModal(false); 
+        const studentIds = completedStudents.map(s => s.studentId);
+
+        try {
+            const response = await fetch('http://localhost:8000/api/reports/send-batch', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                },
+                body: JSON.stringify({
+                    student_ids: studentIds,
+                    exam_date: currentExamDate
+                })
+            });
+
+            if (response.ok) {
+                setStudentsData(prevData => 
+                    prevData.map(student => 
+                        studentIds.includes(student.studentId) 
+                            ? { ...student, status: '送信済' } 
+                            : student
+                    )
+                );
+                
+                showToast(`${studentIds.length}名の保護者へ送信を完了しました。`);
+            } else {
+                if (response.status === 401) {
+                    localStorage.removeItem('token');
+                    window.location.href = '/login';
+                } else {
+                    showToast("送信に失敗しました。");
+                }
+            }
+        } catch (error) {
+            console.error("Batch send error:", error);
+            showToast("ネットワークエラーが発生しました。");
+        }
+    };
+
+
+
 
     return (
         <div className="dashboard-container">
@@ -165,6 +220,7 @@ export default function Dashboard({teacher}) {
                         {activeTab === 'completed' && (
                             <button 
                                 className="btn-primary" 
+                                onClick={handleBatchSendClick}
                                 disabled={completedStudents.length === 0}
                                 style={{
                                     backgroundColor: completedStudents.length === 0 ? '#cbd5e1' : '#3b82f6', // 활성화 시 파란색으로 강조
@@ -333,6 +389,35 @@ export default function Dashboard({teacher}) {
                     onClose={() => setSelectedStudent(null)}
                     onSuccess={handleGenerateSuccess}  
                 />
+            )}
+            {showConfirmModal && (
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
+                    <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '12px', width: '400px', textAlign: 'center', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}>
+                        <h3 style={{ marginTop: 0, color: '#333' }}>一括送信の確認</h3>
+                        <p style={{ color: '#666', marginBottom: '25px' }}>
+                            <strong>{completedStudents.length}名</strong>の保護者に成績表を一括送信しますか？<br/>
+                            <span style={{ fontSize: '12px', color: '#e74c3c' }}>※この操作は取り消せません。</span>
+                        </p>
+                        <div style={{ display: 'flex', justifyContent: 'center', gap: '15px' }}>
+                            <button 
+                                onClick={() => setShowConfirmModal(false)}
+                                style={{ padding: '10px 20px', border: '1px solid #cbd5e1', backgroundColor: 'white', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', color: '#64748b' }}>
+                                キャンセル
+                            </button>
+                            <button 
+                                onClick={executeBatchSend}
+                                style={{ padding: '10px 20px', border: 'none', backgroundColor: '#3b82f6', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', color: 'white' }}>
+                                はい、送信します
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {toastMessage && (
+                <div style={{ position: 'fixed', bottom: '30px', left: '50%', transform: 'translateX(-50%)', backgroundColor: '#334155', color: 'white', padding: '12px 24px', borderRadius: '30px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', zIndex: 1001, fontWeight: 'bold', animation: 'fadeInOut 3s forwards' }}>
+                    {toastMessage}
+                </div>
             )}
         </div>
     );
