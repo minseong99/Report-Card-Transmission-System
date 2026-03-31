@@ -260,7 +260,7 @@ export default function Dashboard({teacher}) {
                                                     <td style={{ padding: '12px', color: activeTab === 'completed' ? '#64748b' : '#333' }}>
                                                         {student.totalScore}点
                                                     </td>
-                                                    <td style={{ padding: '12px', fontWeight: 'bold', color: activeTab === 'pending' ? '#e74c3c' : '#64748b' }}>
+                                                    <td style={{ padding: '12px', fontWeight: 'bold' }}>
                                                         {student.classRank}位
                                                     </td>
                                                     <td style={{ padding: '12px', color: activeTab === 'completed' ? '#64748b' : '#333' }}>
