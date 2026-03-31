@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 # .envを読み込む
 load_dotenv()
 
-from routers import auth, drafts, notification
+from routers import auth, drafts, notification, reports
 
 app = FastAPI(title="成績表送信システム API")
 
@@ -21,5 +21,6 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(drafts.router)
 app.include_router(notification.router)
+app.include_router(reports.router)
 
 

@@ -1,0 +1,278 @@
+import io
+import boto3
+import os 
+import urllib.request
+import matplotlib
+matplotlib.use('Agg') # サーバーバックグラウンドでUIなしにグラフを描画する設定
+import matplotlib.pyplot as plt
+import japanize_matplotlib # グラフの日本語文字化け防止
+
+from botocore.client import Config
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.utils import ImageReader
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.lib.colors import HexColor
+# --- Paragraph関連のインポートを追加 ---
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.platypus import Paragraph
+# ----------------------------------------
+
+# ==========================================
+# 日本語フォント(BIZ UDゴシック)の自動ダウンロードと登録
+# ==========================================
+FONT_FILE = "BIZUDGothic-Regular.ttf"
+FONT_URL = "https://github.com/googlefonts/morisawa-biz-ud-gothic/raw/main/fonts/ttf/BIZUDGothic-Regular.ttf"
+
+if not os.path.exists(FONT_FILE):
+    print("日本語フォントをダウンロードしています...")
+    try:
+        urllib.request.urlretrieve(FONT_URL, FONT_FILE)
+        print("フォントのダウンロードが完了しました！")
+    except Exception as e:
+        print(f"❌ ダウンロードに失敗しました: {e}")
+
+# ReportLabに日本語フォントを登録
+pdfmetrics.registerFont(TTFont('NotoSansJP', FONT_FILE))
+
+# --- 🌟 日本語対応のParagraphスタイルを定義 ---
+styles = getSampleStyleSheet()
+styles.add(ParagraphStyle(
+    name='Japanese',
+    fontName='NotoSansJP',
+    fontSize=11,
+    leading=15, # 行間
+    splitLongWords=True, 
+))
+# ----------------------------------------------
+
+# MinIOクライアント設定
+access_key_id = os.getenv('MINIO_ROOT_USER', 'user')
+secret_access_key = os.getenv('MINIO_ROOT_PASSWORD', 'pasword1234')
+
+s3_client = boto3.client(
+    's3',
+    endpoint_url='http://minio:9000', 
+    aws_access_key_id=access_key_id,
+    aws_secret_access_key=secret_access_key,
+    region_name='us-east-1',
+    config=Config(
+        signature_version='s3v4',
+        s3={'addressing_style': 'path'}
+    )
+)
+s3_client_external = boto3.client( 
+    's3',
+    endpoint_url='http://localhost:9000', 
+    aws_access_key_id=access_key_id,
+    aws_secret_access_key=secret_access_key,
+    region_name='us-east-1',
+    config=Config(signature_version='s3v4', s3={'addressing_style': 'path'})
+)
+
+BUCKET_NAME = "report-cards"
+
+def generate_and_upload_pdf(class_id: int, exam_date: str, student_info: dict, 
+                            current_scores: list, trend_data: list, comment: str, university: str) -> str:
+    """
+    データを受け取り、修能(スヌン)スタイルの公式成績表PDFを生成してMinIOにアップロードする
+    """
+    student_id = student_info["id"]
+    student_name = f"{student_info['苗字']} {student_info['名前']}"
+    file_name = f"{exam_date}_{student_id}_{student_info['名前']}_成績表.pdf"
+
+    # ====================================
+    # 1. Matplotlibで「成績推移グラフ」を描画
+    # ====================================
+    plt.figure(figsize=(7, 2.5)) 
+    months = [d["month"] for d in trend_data]
+    
+    if trend_data:
+        subjects = [k for k in trend_data[-1].keys() if k != "month"]
+        for sub in subjects:
+            scores = [d.get(sub, None) for d in trend_data]
+            plt.plot(months, scores, marker='o', linewidth=2, label=sub)
+            
+    plt.ylim(0, 100)
+    plt.legend(loc='lower right', fontsize='small', ncol=3) 
+    plt.grid(True, linestyle='--', alpha=0.5)
+    plt.tight_layout()
+
+    img_buffer = io.BytesIO()
+    plt.savefig(img_buffer, format='png', dpi=300) 
+    img_buffer.seek(0)
+    plt.close()
+
+    # ====================================
+    # 2. ReportLabで「修能(スヌン)スタイル」のPDFを描画
+    # ====================================
+    pdf_buffer = io.BytesIO()
+    c = canvas.Canvas(pdf_buffer, pagesize=A4)
+    width, height = A4
+    margin = 40
+
+    def set_font(size):
+        c.setFont('NotoSansJP', size)
+
+    # --- ヘッダー領域 (タイトル) ---
+    c.setLineWidth(2)
+    c.setFillColor(HexColor("#f8fafc"))
+    c.rect(margin, height - margin - 50, width - 2*margin, 50, fill=1, stroke=1) 
+    
+    c.setFillColorRGB(0, 0, 0)
+    set_font(22)
+    c.drawCentredString(width / 2, height - margin - 35, "模擬試験 成績通知書")
+
+    # ==========================================
+    # 🌟 修正ポイント 1: 基本情報＆総合成績領域 (2段構成)
+    # ==========================================
+    info_y = height - 160 # 高さを拡張
+    c.setLineWidth(1)
+    c.rect(margin, info_y, width - 2*margin, 50)
+    
+    # 十字の区切り線
+    center_x = margin + (width - 2*margin) / 2
+    c.line(margin, info_y + 25, width - margin, info_y + 25) # 横線
+    c.line(center_x, info_y, center_x, info_y + 50) # 縦線
+    
+    # 上段 (受験番号 / 氏名 | 実施日)
+    set_font(11)
+    c.drawString(margin + 15, info_y + 33, "受験番号 / 氏名 :")
+    set_font(12)
+    c.drawString(margin + 115, info_y + 33, f"{student_id}  /  {student_name}")
+    
+    set_font(11)
+    c.drawString(center_x + 15, info_y + 33, "実施日 :")
+    set_font(12)
+    c.drawString(center_x + 80, info_y + 33, exam_date)
+
+    # 下段 (総合 クラス順位 | 総合 全校順位)
+    set_font(11)
+    c.drawString(margin + 15, info_y + 8, "総合成績 クラス順位 :")
+    set_font(12)
+    c.drawString(margin + 145, info_y + 8, f"{student_info['クラス順位']} 位")
+    
+    set_font(11)
+    c.drawString(center_x + 15, info_y + 8, "総合成績 全校順位 :")
+    set_font(12)
+    c.drawString(center_x + 145, info_y + 8, f"{student_info['統合順位']} 位")
+
+    # ==========================================
+    # 🌟 修正ポイント 2: 科目別成績テーブル (4カラムに縮小)
+    # ==========================================
+    table_y = info_y - 25 # テーブルとの間隔
+    row_height = 25
+    header_y = table_y - row_height
+    
+    num_rows = len(current_scores)
+    
+    c.setFillColor(HexColor("#e2e8f0"))
+    c.rect(margin, header_y, width - 2*margin, row_height, fill=1, stroke=0)
+    c.setFillColorRGB(0, 0, 0)
+    
+    c.setLineWidth(1.5)
+    c.rect(margin, header_y - (num_rows * row_height), width - 2*margin, row_height * (num_rows + 1), stroke=1, fill=0)
+
+    # カラムのX座標 (4等分に修正)
+    col_w = (width - 2*margin) / 4
+    x_cols = [margin + col_w * i for i in range(5)]
+    
+    c.setLineWidth(0.5)
+    for x in x_cols[1:4]: # 内部の縦線は3本
+        c.line(x, header_y + row_height, x, header_y - (num_rows * row_height))
+
+    # ヘッダーテキスト (科目別の全校順位のみ表示)
+    set_font(11)
+    headers = ["科目", "標準点数", "偏差値", "科目別 全校順位"]
+    for i, text in enumerate(headers):
+        c.drawCentredString(x_cols[i] + col_w/2, header_y + 8, text)
+
+    # データ行テキスト
+    set_font(11)
+    current_y = header_y
+    for score in current_scores:
+        current_y -= row_height
+        c.line(margin, current_y + row_height, width - margin, current_y + row_height) 
+        
+        c.drawCentredString(x_cols[0] + col_w/2, current_y + 8, score['subject'])
+        c.drawCentredString(x_cols[1] + col_w/2, current_y + 8, str(score['score']))
+        c.drawCentredString(x_cols[2] + col_w/2, current_y + 8, str(score['hensachi']))
+        
+        # 🚨 DBから来た「その科目の実際の順位」を出力！
+        c.drawCentredString(x_cols[3] + col_w/2, current_y + 8, f"{score['overall_rank']} 位")
+
+    # --- 成績推移グラフ領域 ---
+    graph_h = 190
+    graph_y = current_y - graph_h - 10
+    c.setLineWidth(1)
+    c.setFillColor(HexColor("#f8fafc"))
+    c.rect(margin, graph_y + 170, width - 2*margin, 20, fill=1, stroke=1)
+    
+    c.rect(margin, graph_y, width - 2*margin, 170, fill=0, stroke=1) 
+
+    c.setFillColorRGB(0, 0, 0)
+    set_font(10)
+    c.drawString(margin + 10, graph_y + 175, "■ 成績推移グラフ (今年度)")
+    
+    c.drawImage(ImageReader(img_buffer), margin + 10, graph_y + 5, width=width - 2*margin - 20, height=160)
+
+    # --- Paragraphによるテキスト折り返し実装 ---
+    uni_text = university.replace('\n', '<br/>')
+    p_uni = Paragraph(uni_text, styles['Japanese'])
+    aw, ah = p_uni.wrap(width - 2*margin - 20, height) 
+
+    title_h = 20
+    c.setLineWidth(1)
+    c.setFillColor(HexColor("#f8fafc"))
+    c.rect(margin, graph_y - title_h - 10, width - 2*margin, title_h, fill=1, stroke=1)
+    
+    c.setFillColorRGB(0, 0, 0)
+    set_font(10)
+    c.drawString(margin + 10, graph_y - title_h - 5, "■ 推薦大学リスト")
+
+    text_box_y = graph_y - title_h - ah - 20 
+    c.rect(margin, text_box_y, width - 2*margin, ah + 10, fill=0, stroke=1)
+    p_uni.drawOn(c, margin + 10, text_box_y + 5)
+
+    comment_text = comment.replace('\n', '<br/>')
+    p_comment = Paragraph(comment_text, styles['Japanese'])
+    aw_c, ah_c = p_comment.wrap(width - 2*margin - 20, height)
+
+    c.setFillColor(HexColor("#f8fafc"))
+    c.rect(margin, text_box_y - title_h - 10, width - 2*margin, title_h, fill=1, stroke=1)
+    
+    c.setFillColorRGB(0, 0, 0)
+    set_font(10)
+    c.drawString(margin + 10, text_box_y - title_h - 5, "■ 担当講師からのコメント")
+
+    msg_box_y = text_box_y - title_h - ah_c - 20 
+    c.rect(margin, msg_box_y, width - 2*margin, ah_c + 10, fill=0, stroke=1)
+    p_comment.drawOn(c, margin + 10, msg_box_y + 5)
+    
+    c.showPage()
+    c.save()
+    pdf_buffer.seek(0)
+
+    # ====================================
+    # 3. MinIOにアップロード
+    # ====================================
+    s3_key = f"{class_id}/{file_name}"
+    s3_client.upload_fileobj(
+        pdf_buffer,
+        BUCKET_NAME,
+        s3_key,
+        ExtraArgs={'ContentType' : 'application/pdf'}
+    )
+
+    db_url = f"http://localhost:9000/{BUCKET_NAME}/{s3_key}"
+    presigned_url = s3_client_external.generate_presigned_url(
+        'get_object',
+        Params={'Bucket': BUCKET_NAME, 'Key': s3_key},
+        ExpiresIn=604800
+    )
+
+    return {
+        "db_url": db_url,
+        "presigned_url": presigned_url
+    }

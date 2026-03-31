@@ -46,6 +46,50 @@ services:
     tty: true
     depends_on:
       - backend
+  
+  # local object storage 
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    ports:
+      - "9000:9000" # S3 API port 
+      - "9001:9001" # object storage 管理UI port
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER} # == S3 access key
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD} # == S3 Secret key
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+  minio-init:
+    image: minio/mc:latest
+    container_name: minio-init
+    depends_on:
+      - minio
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    entrypoint: 
+      - /bin/sh
+      - -c
+      - |
+        echo 'MinIOサーバーの起動待機中...'
+        sleep 5
+
+        echo ' MinIOサーバーに接続しています...'
+        until /usr/bin/mc alias set myminio http://minio:9000 $$MINIO_ROOT_USER $$MINIO_ROOT_PASSWORD; do
+          echo '接続再試行中...'
+          sleep 2
+        done;
+
+        echo 'report-cards バケット自動生成...'
+        /usr/bin/mc mb myminio/report-cards --ignore-existing;
+
+        # /usr/bin/mc anonymous set public myminio/report-cards
+
+        echo 'バケットの準備完了'
+        exit 0
+      
 
 volumes:
   db_data:
+  minio_data:

@@ -11,7 +11,7 @@ router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
 SECRET_KEY = os.getenv("SECRET_KEY", "fallback_secret_key")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 # 24時間
+ACCESS_TOKEN_EXPIRE_MINUTES = 60  # 24時間
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
