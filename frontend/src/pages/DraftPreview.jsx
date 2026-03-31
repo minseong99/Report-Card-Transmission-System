@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import './DraftPreview.css'; 
 
-export default function DraftPreview({ studentData, examDate, onClose }) {
+export default function DraftPreview({ studentData, examDate, onClose, onSuccess }) {
     const draftData = studentData;
     const studentSubjects = useMemo(() => {
         if (!draftData || !draftData.currentScores) return [];
@@ -65,10 +65,17 @@ export default function DraftPreview({ studentData, examDate, onClose }) {
             if (response.ok) {
                 const result = await response.json();
                 console.log(`${result.file_url}`);
-                onClose();
-            }else {
-                const errorData = await response.json()
-            }
+                onSuccess(draftData.studentId, result.file_url)
+            } else{
+                if (response.status === 401) {
+                    localStorage.removeItem('token');
+                    window.location.href = '/login'
+                } else {
+                    const errorData = await response.json();
+                    alert(`エラーが発生しました: ${errorData.detail || '不明なエラー'}`);
+                }
+            }  
+                
         } catch (error) {
             console.error("API 通信エラー", error);
         } finally {

@@ -36,19 +36,25 @@ export default function Dashboard({teacher}) {
                     setAlarms(data.alerts);
 
                 } else {
-                    console.log("サーバ側:", response.status)
+                if (response.status === 401) {
+                    localStorage.removeItem('token');
+                    window.location.href = '/login'
+                } else {
+                    const errorData = await response.json();
+                    alert(`エラーが発生しました: ${errorData.detail || '不明なエラー'}`);
+                }
                 }
             }catch (error) {
                 console.error("scanner通信エラー:", error);
             }
         };
-        const intervalID = setInterval(checkStatus, 3000); //３秒ごと
+        const intervalID = setInterval(checkStatus, 30000); //３0秒ごと
         checkStatus(); 
         // ログアウトしたり、画面を閉じたら監視停止
         return () => clearInterval(intervalID);    
     }, [teacher.class_id]);
 
-useEffect(() => {
+    useEffect(() => {
         const fetchDrafts = async () => {
             try {
                 // Cache-bursting 
@@ -66,6 +72,14 @@ useEffect(() => {
                         setStudentsData(result.data);
                         setCurrentExamDate(result.exam_date);
                     }
+                }else {
+                 if (response.status === 401) {
+                    localStorage.removeItem('token');
+                    window.location.href = '/login'
+                } else {
+                    const errorData = await response.json();
+                    alert(`エラーが発生しました: ${errorData.detail || '不明なエラー'}`);
+                }
                 }
 
             } catch (error) {
@@ -73,7 +87,7 @@ useEffect(() => {
             }
         };
         fetchDrafts();
-    }, [teacher.class_id, alarms]);
+    }, [teacher.class_id, alarms.length]);
     
     // データ分離
     const pendingStudents = studentsData.filter(s => s.status !== '完了');
@@ -92,6 +106,24 @@ useEffect(() => {
         setActiveTab(tab);
         setCurrentPage(1);
     };
+
+    // 成績表url data
+    const handleGenerateSuccess = (studentId, fileUrl) => {
+        setStudentsData(prevData => 
+            prevData.map(student => {
+                if(student.studentId == studentId){
+                    return {
+                        ...student,
+                        status: '完了',
+                        fileUrl: fileUrl
+                    };
+                }
+                return student;
+            })
+        );
+        setSelectedStudent(null);
+    };
+
 
     return (
         <div className="dashboard-container">
@@ -211,7 +243,7 @@ useEffect(() => {
                                                 <th style={{ padding: '12px' }}>クラス順位</th>
                                                 <th style={{ padding: '12px' }}>全校順位</th>
                                                 <th style={{ padding: '12px', textAlign: 'center' }}>
-                                                    {activeTab === 'pending' ? 'アクション' : 'ステータス'}
+                                                    {activeTab === 'pending' ? 'アクション' : '成績表'}
                                                 </th>
                                             </tr>
                                         </thead>
@@ -244,9 +276,19 @@ useEffect(() => {
                                                                 プレビュー
                                                             </button>
                                                         ) : (
-                                                            <span style={{ padding: '6px 12px', backgroundColor: '#e2e8f0', color: '#64748b', borderRadius: '4px', fontSize: '13px', fontWeight: 'bold' }}>
-                                                                確認済
-                                                            </span>
+                                                            <a
+                                                                href={student.fileUrl} 
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                style={{ 
+                                                                    color: '#3b82f6', 
+                                                                    textDecoration: 'underline', 
+                                                                    cursor: 'pointer', 
+                                                                    fontWeight: 'bold' 
+                                                                }}
+                                                            >
+                                                                成績表を見る
+                                                            </a>
                                                         )}
                                                     </td>
                                                 </tr>
@@ -288,7 +330,8 @@ useEffect(() => {
                 <DraftPreview 
                     studentData={selectedStudent} 
                     examDate={currentExamDate}
-                    onClose={() => setSelectedStudent(null)} 
+                    onClose={() => setSelectedStudent(null)}
+                    onSuccess={handleGenerateSuccess}  
                 />
             )}
         </div>
