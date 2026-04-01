@@ -19,51 +19,33 @@ export function useDashboardData(class_id) {
         return false;
     };
 
-    // 1. アラームのポーリング (30秒間隔)
-    useEffect(() => {
-        if (!class_id) return;
-
-        const checkStatus = async () => {
-            try {
+    // アラームを最新状態に更新する(SSEから呼ばれる)
+    const fetchAlarms = async () => {
+        if(!class_id) return;
+        try {
                 const response = await fetch(`http://localhost:8000/api/notification/?t=${new Date().getTime()}`, {
                     method: 'GET',
                     headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('token')}`,
-                        'Cache-Control': 'no-cache'
-                    },
-                    cache: 'no-store'
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`,},
                 });
 
                 if (response.ok) {
                     const data = await response.json();
                     setAlarms(data.alerts);
-                } else if (!handleAuthError(response.status)) {
-                    console.error("サーバ側エラー:", response.status);
-                }
-            } catch (error) {
+                } 
+        } catch (error) {
                 console.error("アラーム通信エラー:", error);
-            }
-        };
-
-        const intervalID = setInterval(checkStatus, 5000);
-        checkStatus();
-        
-        return () => clearInterval(intervalID);    
-    }, [class_id]);
-
-    // 2. 成績草案データの取得 (アラーム数が変化した時のみ)
-    useEffect(() => {
-        if (!class_id) return;
-
-        const fetchDrafts = async () => {
-            try {
+        }
+    };
+    // 成績表データを最新状態に更新する(SSEから呼ばれる)
+    const fetchDrafts = async () => {
+        if(!class_id) return;
+        try {
                 const response = await fetch(`http://localhost:8000/api/drafts/preview/?t=${new Date().getTime()}`, {
                     method: 'GET',
                     headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('token')}`,
-                        'Cache-Control': 'no-cache'
-                    },
-                    cache: 'no-store'
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    }
                 });
 
                 if (response.ok) {
@@ -72,19 +54,36 @@ export function useDashboardData(class_id) {
                         setStudentsData(result.data);
                         setCurrentExamDate(result.exam_date);
                     }
-                } else if (!handleAuthError(response.status)) {
-                    const errorData = await response.json();
-                    alert(`エラーが発生しました: ${errorData.detail || '不明なエラー'}`);
-                }
-            } catch (error) {
+                } 
+        } catch (error) {
                 console.error("プレビューデータ取得エラー:", error);
+        }
+    };
+
+    // SSE
+    useEffect(() => {
+        if (!class_id) return;
+
+        // 1. 初回データロード（ページに来た時に１回だけ実行）
+        fetchAlarms();
+        fetchDrafts();
+        
+        // 2. SSE接続開始
+        const token = localStorage.getItem('token');
+        const eventSourece = new EventSource(`http://localhost:8000/api/notification/stream?token=${token}`);
+
+        //　サーバから"REFRESH_DRAFTS"という信号が届いた時に処理
+        eventSourece.onmessage = (event) => {
+            console.log("SSE受信番号", event.data);
+
+            if(event.data === "REFRESH_DRAFTS"){
+                // サーバー側でデータが変わった合図なので、アラームとデータを一回ずつ再取得
+                fetchAlarms();
+                fetchDrafts();
             }
         };
-        const intervalID = setInterval(fetchDrafts, 5000);
-        fetchDrafts();
-
-        return () => clearInterval(intervalID);
     }, [class_id]);
+
 
     // 3. 個別の成績表生成・確認成功時のアクション
     const updateStudentSuccess = (studentId, fileUrl) => {
@@ -155,6 +154,13 @@ export function useDashboardData(class_id) {
 
     // アラームの監視とスマートモーダルのトリガー
     useEffect(() => {
+        // 同じ日の採点完了のテストのため
+        const currentAlarmDates = alarms.map(a => a.date);
+        for (const date of promptedExams.current) {
+            if (!currentAlarmDates.includes(date)) {
+                promptedExams.current.delete(date);
+            }
+        }
         if (alarms.length > 0){
             const processingAlarm = alarms.find(a => a.type === 'processing');
              //まだユーザーにポップアップを見せていない試験日なら表示する
@@ -174,13 +180,6 @@ export function useDashboardData(class_id) {
             }
         }
 
-        // 同じ日の採点完了のテストのため
-        const currentAlarmDates = alarms.map(a => a.date);
-        for (const date of promptedExams.current) {
-            if (!currentAlarmDates.includes(date)) {
-                promptedExams.current.delete(date);
-            }
-        }
  
     },[alarms, isBulkGenerating]);
 

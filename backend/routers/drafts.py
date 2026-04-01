@@ -3,6 +3,7 @@ from services.monitor import check_new_scores
 from dependencies.auth import get_current_teacher # 🌟 core/dependencies に移動したauthをインポート
 from services.draft_service import get_preview_data, update_score_and_recalculate
 from schemas.draft import ScoreUpdateRequest
+from core.event_manager import event_manager
 
 router = APIRouter(prefix="/api/drafts", tags=["Drafts"])
 
@@ -28,6 +29,7 @@ def trigger_draft_generation(background_tasks: BackgroundTasks):
             "class_id": class_id,
             "message": f"[通知]{exam_date}実施の模擬試験（クラスID：{class_id}）の採点が完了しました。"
         })
+        event_manager.sync_broadcast(class_id, "REFRESH_DRAFTS")
     return {"status": "success", "alerts": alerts}
 
 @router.get("/preview")
@@ -49,6 +51,7 @@ def update_student_score(request: ScoreUpdateRequest, teacher: dict = Depends(ge
     # 再計算が終わったらUIを更新するために最新のプレービューデータを返してあげる
     fresh_data = get_preview_data(teacher["class_id"])
 
+    event_manager.sync_broadcast(teacher["class_id"], "REFRESH_DRAFTS")
     return {
         "status": "success",
         "message": result["message"],

@@ -1,6 +1,7 @@
 import time 
 from core.database import engine 
 import crud.notification_crud as crud
+from core.event_manager import event_manager
 
 """
 保護者への通知（メール・SMSモック）と、DBのステータス更新をオーケストレーションするサービス層。
@@ -20,7 +21,7 @@ def mock_send_email_and_sms(parent_name: str, student_name: str, exam_date: str,
     """
     print(message, flush=True) # ターミナルに即時出力
 
-def process_batch_notifications(student_ids: list[int], exam_date: str):
+def process_batch_notifications(student_ids: list[int], exam_date: str,class_id: int):
     print(f"\n{len(student_ids)}名分の成績表一括送信プロセスを開始します...", flush=True)
 
     with engine.begin() as conn:
@@ -38,6 +39,7 @@ def process_batch_notifications(student_ids: list[int], exam_date: str):
                 # CRUDを使用してステータスを更新
                 crud.update_status_to_sent(conn, target_data["score_id"])
 
+    event_manager.sync_broadcast(class_id, "REFRESH_DRAFTS")
     print("一括送信プロセスがすべて完了しました！", flush=True)
 
 def generate_class_alerts(class_id: int) -> list:

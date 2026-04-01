@@ -34,7 +34,7 @@ def confirm_and_generate_report(request: ConfirmReportRequest, teacher: dict = D
 
 
 @router.post("/send-batch")
-def send_batch_reports(request: BatchSendRequest, background_tasks: BackgroundTasks):
+def send_batch_reports(request: BatchSendRequest, background_tasks: BackgroundTasks, teacher: dict = Depends(get_current_teacher)):
     """
     生成済みの成績表を保護者へ一括送信するバックグラウンドタスクを起動します。
     """
@@ -42,7 +42,8 @@ def send_batch_reports(request: BatchSendRequest, background_tasks: BackgroundTa
     background_tasks.add_task(
         process_batch_notifications, 
         student_ids=request.student_ids, 
-        exam_date=request.exam_date
+        exam_date=request.exam_date,
+        class_id=teacher["class_id"]
     )
 
     return {

@@ -3,6 +3,7 @@ from fastapi import HTTPException, status
 from core.database import engine
 import crud.report_crud as crud
 from services.pdf_service import generate_and_upload_pdf
+from core.event_manager import event_manager
 
 """
 成績表生成のコアとなるビジネスロジックを担当するサービス層。
@@ -74,4 +75,8 @@ def proccess_bulk_report_generation(class_id: int, exam_date: str):
             success_count += 1
         except Exception as e:
             print(f"生徒ID{sid} の生成に失敗: {e}",flush=True)
+    
+    # 全ての生成プロセスが終了した瞬間に、フロントエンドへ「更新せよ」と信号を送ります
+    # 同期関数のため sync_broadcastを使用する
+    event_manager.sync_broadcast(class_id, "REFRESH_DRAFTS")
     print(f"{success_count}名分の成績表一括生成が完了しました。",flush=True)

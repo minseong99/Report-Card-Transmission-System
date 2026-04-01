@@ -1,4 +1,4 @@
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Query
 from fastapi.security import OAuth2PasswordBearer
 import jwt 
 from core.config import settings # 設定をインポート
@@ -38,4 +38,36 @@ def get_current_teacher(token: str = Depends(oauth2_scheme)) -> dict:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, 
             detail="トークンが不正です。"
+        )
+    
+def get_current_teacher_query(token: str = Query(..., description="SSE接続用トークン")):
+    """
+    SSE (EventSource)専用の確認関数。
+    ブラウザのEventSourceはAuthorizationへツダーを送信できないため、
+    URLのクエリパラメータからトークンを受け取って認証します。
+    """
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+
+        login_id: str = payload.get("sub")
+        class_id: int = payload.get("class_id")
+
+        if login_id is None or class_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, 
+                detail="無効なトークンです。必要な情報が含まれていません。"
+            )
+        return {"login_id": login_id, "class_id": class_id}
+        
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, 
+            detail="トークンの有効期限が切れています。"
+        )
+    except Exception as e:
+        # もしまたエラーが出た場合は、バックエンドのターミナルに理由が出力されます
+        print(f"SSE Token Decoding Error: {e}") 
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="SSE Token validation failed",
         )
