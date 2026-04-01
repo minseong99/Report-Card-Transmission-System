@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 /**
  * ダッシュボードのデータ取得と状態管理を行うカスタムフック
@@ -25,7 +25,7 @@ export function useDashboardData(class_id) {
 
         const checkStatus = async () => {
             try {
-                const response = await fetch(`http://localhost:8000/api/notification?t=${new Date().getTime()}`, {
+                const response = await fetch(`http://localhost:8000/api/notification/?t=${new Date().getTime()}`, {
                     method: 'GET',
                     headers: {
                         'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -45,7 +45,7 @@ export function useDashboardData(class_id) {
             }
         };
 
-        const intervalID = setInterval(checkStatus, 30000);
+        const intervalID = setInterval(checkStatus, 5000);
         checkStatus();
         
         return () => clearInterval(intervalID);    
@@ -57,7 +57,7 @@ export function useDashboardData(class_id) {
 
         const fetchDrafts = async () => {
             try {
-                const response = await fetch(`http://localhost:8000/api/drafts/preview?t=${new Date().getTime()}`, {
+                const response = await fetch(`http://localhost:8000/api/drafts/preview/?t=${new Date().getTime()}`, {
                     method: 'GET',
                     headers: {
                         'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -80,8 +80,11 @@ export function useDashboardData(class_id) {
                 console.error("プレビューデータ取得エラー:", error);
             }
         };
+        const intervalID = setInterval(fetchDrafts, 5000);
         fetchDrafts();
-    }, [class_id, alarms.length]);
+
+        return () => clearInterval(intervalID);
+    }, [class_id]);
 
     // 3. 個別の成績表生成・確認成功時のアクション
     const updateStudentSuccess = (studentId, fileUrl) => {
@@ -144,6 +147,69 @@ export function useDashboardData(class_id) {
         setStudentsData(freshData);
     };
 
+    // スマートモーダル用の状態管理
+    const [smartModalData, setSmartModalData] = useState(null); // モーダル表示
+    const promptedExams = useRef(new Set()); // 一度表示したアラームを記憶してスパムを防ぐ
+
+    const [isBulkGenerating, setIsBulkGenerating] = useState(false); // 成績表生成状態
+
+    // アラームの監視とスマートモーダルのトリガー
+    useEffect(() => {
+        if (alarms.length > 0){
+            const processingAlarm = alarms.find(a => a.type === 'processing');
+             //まだユーザーにポップアップを見せていない試験日なら表示する
+            if (processingAlarm && !promptedExams.current.has(processingAlarm.date)){
+                setSmartModalData({
+                    examDate: processingAlarm.date,
+                    message: processingAlarm.message
+                });
+                // Setに該当のアラーム記憶
+                promptedExams.current.add(processingAlarm.date);
+            }
+
+            //生成完了アラーム探し -> overlay 解除
+            const successAlarm = alarms.find(a => a.type === 'success');
+            if (successAlarm && isBulkGenerating) {
+                setIsBulkGenerating(false);
+            }
+        }
+
+        // 同じ日の採点完了のテストのため
+        const currentAlarmDates = alarms.map(a => a.date);
+        for (const date of promptedExams.current) {
+            if (!currentAlarmDates.includes(date)) {
+                promptedExams.current.delete(date);
+            }
+        }
+ 
+    },[alarms, isBulkGenerating]);
+
+
+    // クラス全員の一括成績表生成API
+    const generateClassReports = async (examDate, onSuccess, onError) => {
+        try {
+            const response = await fetch('http://localhost:8000/api/reports/confirm-class', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                },
+                body: JSON.stringify({exam_date: examDate})
+            });
+
+            if(response.ok){
+                const result = await response.json();
+                setIsBulkGenerating(true);
+                onSuccess(result.message);
+            }else {
+                if(handleAuthError(response.status)) return;
+                onError("一括生成のRequestに失敗しました。");
+            }
+        }catch (error) {
+            console.error("Bulk generate error:" ,error);
+            onError("ネットワークエラーが発生しました。");
+        }
+    };
 
     // UIで使うものだけをスッキリと返す
     return {
@@ -152,6 +218,7 @@ export function useDashboardData(class_id) {
         currentExamDate,
         updateStudentSuccess,
         sendBatchReports,
-        refreshStudentsData
+        refreshStudentsData,
+        smartModalData, setSmartModalData, generateClassReports,isBulkGenerating
     };
 }

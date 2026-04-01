@@ -51,3 +51,27 @@ def generate_report_workflow(student_id: int, exam_date: str, comment: str, univ
 
     # フロントエンドに渡すPresigned URLを返す
     return file_urls['presigned_url']
+
+def proccess_bulk_report_generation(class_id: int, exam_date: str):
+    """
+    バックグラウンドでクラス全員分の成績表を自動生成するタスク。
+    """
+    print(f"\n[クラス: {class_id}] {exam_date}実施の成績表一括生成を開始します。。。", flush=True)
+
+    with engine.begin() as conn:
+        student_ids = crud.get_pendding_students_for_class(conn, class_id, exam_date)
+
+    success_count = 0
+    for sid in student_ids:
+        try:
+            generate_report_workflow(
+                student_id=sid,
+                exam_date=exam_date,
+                comment="【システム自動生成】\n各科目において安定した成績を収めています。引き続き現在の学習ペースを維持し、弱点の克服に努めましょう。",
+                university="システムによる自動判定のため省略",
+                class_id=class_id
+            )
+            success_count += 1
+        except Exception as e:
+            print(f"生徒ID{sid} の生成に失敗: {e}",flush=True)
+    print(f"{success_count}名分の成績表一括生成が完了しました。",flush=True)

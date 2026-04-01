@@ -40,3 +40,18 @@ def update_report_file_url(conn: Connection, score_id: int, file_url: str):
         SET 確認ステータス = '完了', s3_file_url = :file_url
         WHERE id = :score_id
     """), {"file_url": file_url, "score_id": score_id})
+
+def get_pendding_students_for_class(conn: Connection, class_id: int, exam_date: str):
+    """
+    クラス内の「未確認」ステータスの生徒IDを全て取得します。
+    """
+    rows = conn.execute(text("""
+        SELECT s.id
+        FROM 学生 s
+        JOIN 成績表 t ON s.id = t.学生_id
+        WHERE s.クラス_id = :class_id
+            AND t.実施日 = :exam_date
+            AND t.確認ステータス IN ('未確認', '生成中')
+    """), {"class_id": class_id, "exam_date": exam_date}).fetchall()
+
+    return [row.id for row in rows]

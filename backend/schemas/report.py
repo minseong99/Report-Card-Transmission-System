@@ -15,3 +15,6 @@ class ConfirmReportRequest(BaseModel):
 class BatchSendRequest(BaseModel):
     student_ids: List[int]
     exam_date: str
+
+class BulkConfirmRequest(BaseModel):
+    exam_date: str
