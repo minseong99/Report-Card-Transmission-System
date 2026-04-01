@@ -7,6 +7,7 @@ matplotlib.use('Agg') # サーバーバックグラウンドでUIなしにグラ
 import matplotlib.pyplot as plt
 import japanize_matplotlib # グラフの日本語文字化け防止
 
+from core.config import settings
 from botocore.client import Config
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
@@ -48,12 +49,12 @@ styles.add(ParagraphStyle(
 # ----------------------------------------------
 
 # MinIOクライアント設定
-access_key_id = os.getenv('MINIO_ROOT_USER', 'user')
-secret_access_key = os.getenv('MINIO_ROOT_PASSWORD', 'pasword1234')
+access_key_id = settings.ACCESS_KEY_ID
+secret_access_key = settings.SECRET_ACCESS_KEY
 
 s3_client = boto3.client(
     's3',
-    endpoint_url='http://minio:9000', 
+    endpoint_url=settings.MINIO_INTERNAL_ENDPOINT, 
     aws_access_key_id=access_key_id,
     aws_secret_access_key=secret_access_key,
     region_name='us-east-1',
@@ -64,7 +65,7 @@ s3_client = boto3.client(
 )
 s3_client_external = boto3.client( 
     's3',
-    endpoint_url='http://localhost:9000', 
+    endpoint_url=settings.MINIO_EXTERNAL_ENDPOINT, 
     aws_access_key_id=access_key_id,
     aws_secret_access_key=secret_access_key,
     region_name='us-east-1',
@@ -258,6 +259,13 @@ def generate_and_upload_pdf(class_id: int, exam_date: str, student_info: dict,
     # 3. MinIOにアップロード
     # ====================================
     s3_key = f"{class_id}/{file_name}"
+
+    try:
+        s3_client.head_bucket(Bucket=BUCKET_NAME)
+    except Exception:
+        print(f"バケット '{BUCKET_NAME}' が見つからないため、新規作成します。")
+        s3_client.create_bucket(Bucket=BUCKET_NAME)
+
     s3_client.upload_fileobj(
         pdf_buffer,
         BUCKET_NAME,

@@ -1,79 +1,46 @@
-import { useState } from 'react';
-import axios from 'axios'
-import './Login.css'
+import React from 'react';
+import { useLogin } from '../hooks/useLogin'; // 🌟 分離したカスタムフックをインポート
+import './Login.css';
 
-export default function Login ({ onLoginSuccess }) {
-    const [loginId, setLoginId] = useState('');
-    const [password, setPassword] = useState('');
-    const [errorMessage, setErrorMessage] = useState('');
-    const [isLoading, setIsLoding] = useState(false);
-
-    // ログインボタンのアクション
-    const handleLogin = async (e) => {
-        e.preventDefault(); // 画面の無駄なリロードを防ぐ
-        setErrorMessage('');
-
-        // 入力チェック
-        if (!loginId || !password) {
-            setErrorMessage('IDとパスワードを入力してください。');
-            return;
-        }
-
-        setIsLoding(true);
-
-        try {
-            //実際のバックエンドAPIにRequestを送る
-            const response = await fetch('http://localhost:8000/api/auth/login', {
-                method: 'POST',
-                headers: {
-                    'Content-Type':'application/json',
-                },
-                body: JSON.stringify({
-                    login_id: loginId,
-                    password: password
-                }),
-            });
-
-            if (response.ok){
-                const data = await response.json();
-                console.log("ログイン成功, 発行されたトークン", data.access_token);
-                
-                // session 
-                localStorage.setItem('token', data.access_token);
-                localStorage.setItem('teacher', JSON.stringify(data.teacher))
-                onLoginSuccess(data.teacher);
-            } else{
-                const errorData = await response.json();
-                setErrorMessage(errorData.detail || 'IDまたはパスワードが間違っています。');
-            }
-        } catch (error) {
-            console.error('API通信エラー:' ,error);
-            setErrorMessage('サーバとの通信に失敗しました。バックエンドを起動しているか確認してください。');
-        } finally {
-            setIsLoding(false);
-        }
-    };
+/**
+ * ログイン画面のView（見た目）コンポーネント
+ * ロジックはすべて `useLogin` フックに委譲し、UIの描画のみに専念します。
+ */
+export default function Login({ onLoginSuccess }) {
+    // カスタムフックから状態とアクション関数を取得
+    const {
+        loginId, setLoginId,
+        password, setPassword,
+        errorMessage, isLoading,
+        handleLogin
+    } = useLogin(onLoginSuccess);
 
     return (
         <div className="login-container">
             <div className="login-box">
+                {/* ヘッダー領域 */}
                 <h2 className="login-title">講師ログイン</h2>
                 <p className="login-subtitle">成績表送信システムへようこそ</p>
 
+                {/* エラーメッセージ表示領域（エラーがある時だけ描画） */}
                 {errorMessage && <div className="error-message">{errorMessage}</div>}
 
+                {/* ログインフォーム */}
                 <form onSubmit={handleLogin}>
+                    
+                    {/* ID入力欄 */}
                     <div className="input-group">
                         <label>ログイン ID</label>
                         <input
                             type="text"
-                            placeholder="idを入力"
+                            placeholder="IDを入力"
                             value={loginId}
                             onChange={(e) => setLoginId(e.target.value)}
-                            disabled={isLoading}
+                            disabled={isLoading} // 通信中は入力をブロック
                         />
                     </div>
 
+                    {/* パスワード入力欄 */}
                     <div className="input-group">
                         <label>パスワード</label>
                         <input
@@ -81,12 +48,13 @@ export default function Login ({ onLoginSuccess }) {
                             placeholder="パスワードを入力"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            disabled={isLoading}
+                            disabled={isLoading} // 通信中は入力をブロック
                         />
                     </div>
 
+                    {/* 送信ボタン */}
                     <button type="submit" className="login-button" disabled={isLoading}>
-                        {isLoading ? '確認中...':'ログイン'} 
+                        {isLoading ? '確認中...' : 'ログイン'} 
                     </button>
                 </form>
             </div>

@@ -1,187 +1,134 @@
-import {useState, useEffect} from 'react';
+import { useState, useMemo } from 'react';
 import './Dashboard.css';
-import DraftPreview from './DraftPreview';
 
-export default function Dashboard({teacher}) {
-    const [alarms, setAlarms] = useState([]);
-    
-    const [studentsData, setStudentsData] = useState([]);
-    const [currentExamDate, setCurrentExamDate] = useState(null);
-    const [selectedStudent, setSelectedStudent] = useState(null);
+// カスタムフックと分離されたUIコンポーネントをインポート
+import { useDashboardData } from '../hooks/useDashboardData';
+import { Toast, ConfirmModal, Pagination } from '../components/common/SharedUI';
+import StudentTable from '../components/dashboard/StudentTable';
+import DraftPreview from '../components/preview/DraftPreview';
 
-    // Tab, Pagination state
-    const [activeTab, setActiveTab] = useState('pending'); // 'pending' または 'completed'
-    const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 10; 
+/**
+ * ダッシュボードのメインViewコンポーネント
+ * * 【アーキテクチャのポイント】
+ * 1. データ取得やAPI通信などのビジネスロジックは `useDashboardData` フックに完全に委譲しています。
+ * 2. このコンポーネントは「UIの状態管理」と「コンポーネントの配置（レイアウト）」のみを担当します。
+ * 3. `useMemo` を活用し、不要なレンダリングや配列の再計算を防ぐパフォーマンス最適化を行っています。
+ */
+export default function Dashboard({ teacher }) {
+    // ==========================================
+    // 1. データとビジネスロジックの取得 (Custom Hook)
+    // ==========================================
+    const { 
+        alarms,             // 新着アラームのリスト
+        studentsData,       // 担当クラスの全生徒の成績データ
+        currentExamDate,    // 最新の試験実施日
+        updateStudentSuccess, // 個別成績表の生成成功時の状態更新関数
+        sendBatchReports    // 一括送信APIを呼び出す関数
+    } = useDashboardData(teacher.class_id);
 
-    // polling : 3秒ごとにバッググラウンドを自動監視
-    useEffect(() => {
-        const checkStatus = async () => {
-            try {
-                // cache-bursting 適用　： 毎回のrequestが新しいもののようにする方法
-                const response = await fetch(`
-                    http://localhost:8000/api/notification?t=${new Date().getTime()}`, 
-                    {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('token')}`,
-                        'Cache-Control': 'no-cache' // cacne使用x
-                    }, 
-                    cache: 'no-store' // browser cache 無視
-                    }
-                );
+    // ==========================================
+    // 2. UIのローカル状態管理 (Local State)
+    // ==========================================
+    const [activeTab, setActiveTab] = useState('pending'); // 現在選択中のタブ ('pending' | 'completed')
+    const [currentPage, setCurrentPage] = useState(1);     // ページネーションの現在ページ
+    const [selectedStudent, setSelectedStudent] = useState(null); // プレビュー表示中の生徒データ
+    const [showConfirmModal, setShowConfirmModal] = useState(false); // 一括送信の確認モーダル表示フラグ
+    const [toastMessage, setToastMessage] = useState("");  // トースト通知のメッセージ内容
 
-                if (response.ok) {
-                    const data = await response.json();
-                    setAlarms(data.alerts);
+    const itemsPerPage = 10; // 1ページあたりの表示件数
 
-                } else {
-                if (response.status === 401) {
-                    localStorage.removeItem('token');
-                    window.location.href = '/login'
-                } else {
-                    const errorData = await response.json();
-                    alert(`エラーが発生しました: ${errorData.detail || '不明なエラー'}`);
-                }
-                }
-            }catch (error) {
-                console.error("scanner通信エラー:", error);
-            }
-        };
-        const intervalID = setInterval(checkStatus, 30000); //３0秒ごと
-        checkStatus(); 
-        // ログアウトしたり、画面を閉じたら監視停止
-        return () => clearInterval(intervalID);    
-    }, [teacher.class_id]);
-
-    useEffect(() => {
-        const fetchDrafts = async () => {
-            try {
-                // Cache-bursting 
-                const response = await fetch(`http://localhost:8000/api/drafts/preview?t=${new Date().getTime()}`,{
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('token')}`,
-                        'Cache-Control': 'no-cache'
-                    },
-                    cache: 'no-store'
-                });
-                if(response.ok) {
-                    const result = await response.json();
-                    if (result.data) {
-                        setStudentsData(result.data);
-                        setCurrentExamDate(result.exam_date);
-                    }
-                }else {
-                 if (response.status === 401) {
-                    localStorage.removeItem('token');
-                    window.location.href = '/login'
-                } else {
-                    const errorData = await response.json();
-                    alert(`エラーが発生しました: ${errorData.detail || '不明なエラー'}`);
-                }
-                }
-
-            } catch (error) {
-                console.error("プレビューデータ取得エラー", error);
-            }
-        };
-        fetchDrafts();
-    }, [teacher.class_id, alarms.length]);
-    
-    // データ分離
-    const pendingStudents = studentsData.filter(s => s.status !== '完了');
-    const completedStudents = studentsData.filter(s => s.status === '完了');
-
-    // 現在洗濯されたTABの全体リスト
-    const currentList = activeTab === 'pending' ? pendingStudents : completedStudents;
-
-    // pagination計算
-    const totalPages = Math.ceil(currentList.length / itemsPerPage) || 1;
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const currentDisplayList = currentList.slice(startIndex, startIndex + itemsPerPage);
-
-    // Tabが変更されたら1に初期化
-    const handleTabChange = (tab) => {
-        setActiveTab(tab);
-        setCurrentPage(1);
-    };
-
-    // 成績表url data
-    const handleGenerateSuccess = (studentId, fileUrl) => {
-        setStudentsData(prevData => 
-            prevData.map(student => {
-                if(student.studentId == studentId){
-                    return {
-                        ...student,
-                        status: '完了',
-                        fileUrl: fileUrl
-                    };
-                }
-                return student;
-            })
-        );
-        setSelectedStudent(null);
-    };
-
-    const [showConfirmModal, setShowConfirmModal] = useState(false);
-    const [toastMessage, setToastMessage] = useState("");
-
+    /**
+     * トースト通知を画面下部に表示し、3秒後に自動で消すヘルパー関数
+     */
     const showToast = (message) => {
         setToastMessage(message);
         setTimeout(() => setToastMessage(""), 3000);
     };
 
-    const handleBatchSendClick = () => {
-        setShowConfirmModal(true);
+    // ==========================================
+    // 3. パフォーマンス最適化 (useMemoによる派生状態の計算)
+    // ==========================================
+    // studentsData, activeTab, currentPage のいずれかが変化した時のみ再計算される
+    const { 
+        currentDisplayList, // 現在のページで実際に表示する10件のデータ
+        completedStudents,  // 「送信待機中(完了)」ステータスの全生徒
+        pendingCount,       // 「未確認(保留)」ステータスの生徒数
+        totalPages,         // ページネーションの総ページ数
+        startIndex          // 現在のページの最初のインデックス（No.の計算用）
+    } = useMemo(() => {
+        // 1. データのフィルタリング
+        const pending = studentsData.filter(s => s.status !== '完了' && s.status !== '送信済');
+        const completed = studentsData.filter(s => s.status === '完了');
+        
+        // 2. 現在のタブに応じたリストの選択
+        const list = activeTab === 'pending' ? pending : completed;
+        
+        // 3. ページネーションの計算
+        const start = (currentPage - 1) * itemsPerPage;
+        
+        return {
+            currentDisplayList: list.slice(start, start + itemsPerPage),
+            completedStudents: completed,
+            pendingCount: pending.length,
+            totalPages: Math.ceil(list.length / itemsPerPage) || 1,
+            startIndex: start
+        };
+    }, [studentsData, activeTab, currentPage]);
+
+    // ==========================================
+    // 4. イベントハンドラー (UI Action)
+    // ==========================================
+    
+    /**
+     * タブを切り替えた際に、ページを1ページ目にリセットする
+     */
+    const handleTabChange = (tab) => {
+        setActiveTab(tab);
+        setCurrentPage(1);
     };
 
-    const executeBatchSend = async () => {
-        setShowConfirmModal(false); 
+
+    /**
+     * 一括送信のアクション
+     * モーダルでの確認後、実際の通信処理はHookに委譲し、結果に応じてUI（トースト通知）を制御します。
+     */
+    const executeBatchSend = () => {
+        console.log("[Dashboard] 一括送信処理を開始します。");
+        setShowConfirmModal(false); // 確認モーダルを閉じる
+        
         const studentIds = completedStudents.map(s => s.studentId);
+        console.log("[Dashboard] 送信対象の生徒IDリスト:", studentIds);
+        console.log("[Dashboard] 対象の試験実施日:", currentExamDate);
 
-        try {
-            const response = await fetch('http://localhost:8000/api/reports/send-batch', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
-                },
-                body: JSON.stringify({
-                    student_ids: studentIds,
-                    exam_date: currentExamDate
-                })
-            });
-
-            if (response.ok) {
-                setStudentsData(prevData => 
-                    prevData.map(student => 
-                        studentIds.includes(student.studentId) 
-                            ? { ...student, status: '送信済' } 
-                            : student
-                    )
-                );
-                
-                showToast(`${studentIds.length}名の保護者へ送信を完了しました。`);
-            } else {
-                if (response.status === 401) {
-                    localStorage.removeItem('token');
-                    window.location.href = '/login';
-                } else {
-                    showToast("送信に失敗しました。");
-                }
-            }
-        } catch (error) {
-            console.error("Batch send error:", error);
-            showToast("ネットワークエラーが発生しました。");
+        // 安全装置: Hookから関数が正しく取得できているか確認
+        if (typeof sendBatchReports !== 'function') {
+            alert("🚨 フロントエンドエラー: sendBatchReports 関数が見つかりません。useDashboardData.js との連携を確認してください。");
+            return;
         }
+
+        // 実際のバックエンド通信処理を実行 (ロジックはHook内)
+        sendBatchReports(
+            studentIds, 
+            currentExamDate,
+            // 成功時のコールバック (onSuccess)
+            (count) => {
+                console.log("[Dashboard] 通信成功コールバックを実行しました。");
+                showToast(`${count}名の保護者へ送信を完了しました。`);
+            },
+            // 失敗・エラー時のコールバック (onError)
+            (errorMsg) => {
+                console.error("[Dashboard] エラーコールバックを実行しました:", errorMsg);
+                showToast(`${errorMsg}`);
+            }
+        );
     };
 
-
-
-
+    // ==========================================
+    // 5. 画面のレンダリング (View)
+    // ==========================================
     return (
         <div className="dashboard-container">
+            {/* ---------------- ヘッダー領域 ---------------- */}
             <header className="dashboard-header">
                 <div className="header-left">
                     <h2>{teacher.name} 先生のワークスペース</h2>
@@ -193,7 +140,7 @@ export default function Dashboard({teacher}) {
             </header>
 
             <main className="dashboard-layout">
-                {/* 左側 */}
+                {/* ---------------- 左側: アラームサイドバー ---------------- */}
                 <aside className="sidebar">
                     <section className="status-card">
                         <h3>アラーム</h3>
@@ -204,7 +151,7 @@ export default function Dashboard({teacher}) {
                                 alarms.map((alarm) => (
                                     <div key={alarm.id} className={`alert-box ${alarm.type}`}>
                                         <strong>{alarm.message}</strong>
-                                        <p>成績表草案を確認して成績表を生成してください。</p>
+                                        <p>成績表草案を確認して生成してください。</p>
                                     </div>
                                 ))
                             )}
@@ -212,25 +159,25 @@ export default function Dashboard({teacher}) {
                     </section>
                 </aside>
 
-                {/* 右側 */}
+                {/* ---------------- 右側: メインコンテンツ領域 ---------------- */}
                 <section className="main-content">
                     <div className="content-header">
-                        <h3>{activeTab === 'completed' ? '成績表送信待機中一覧' : '成績草案一覧'}{currentExamDate && `(${currentExamDate} 実施)`}</h3>
+                        <h3>
+                            {activeTab === 'completed' ? '成績表送信待機中一覧' : '成績草案一覧'}
+                            {currentExamDate && `(${currentExamDate} 実施)`}
+                        </h3>
                         
+                        {/* 完了タブの時のみ、一括送信ボタンを表示 */}
                         {activeTab === 'completed' && (
                             <button 
                                 className="btn-primary" 
-                                onClick={handleBatchSendClick}
+                                onClick={() => setShowConfirmModal(true)}
                                 disabled={completedStudents.length === 0}
-                                style={{
-                                    backgroundColor: completedStudents.length === 0 ? '#cbd5e1' : '#3b82f6', // 활성화 시 파란색으로 강조
-                                    color: 'white',
-                                    border: 'none',
-                                    padding: '8px 16px',
-                                    borderRadius: '6px',
-                                    fontWeight: 'bold',
-                                    cursor: completedStudents.length === 0 ? 'not-allowed' : 'pointer',
-                                    transition: '0.2s'
+                                style={{ 
+                                    backgroundColor: completedStudents.length === 0 ? '#cbd5e1' : '#3b82f6', 
+                                    color: 'white', border: 'none', padding: '8px 16px', borderRadius: '6px', 
+                                    fontWeight: 'bold', transition: '0.2s',
+                                    cursor: completedStudents.length === 0 ? 'not-allowed' : 'pointer'
                                 }}
                             >
                                 保護者へ一括送信
@@ -238,187 +185,85 @@ export default function Dashboard({teacher}) {
                         )}
                     </div>
                     
+                    {/* データが1件もない場合の空状態（Empty State） */}
                     {studentsData.length === 0 ? (
                         <div className="placeholder-area">
                             <div className="empty-state">
                                 <span className="icon">📊</span>
                                 <h4>最近25日以内の成績データがありません</h4>
-                                <p>OMRスキャンが完了するとここに生徒の一覧が表示されます。</p>
                             </div>
                         </div>
                     ) : (
                         <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', height: '100%' }}>
                             
-                            {/* Tabボタン */}
+                            {/* タブナビゲーション */}
                             <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-                                <button
-                                    onClick={() => handleTabChange('pending')}
-                                    style={{
-                                        padding: '10px 20px',
-                                        backgroundColor: activeTab === 'pending' ? '#e74c3c' : '#f1f5f9',
-                                        color: activeTab === 'pending' ? 'white' : '#64748b',
-                                        border: 'none',
-                                        borderRadius: '6px',
-                                        cursor: 'pointer',
-                                        fontWeight: 'bold',
-                                        transition: '0.2s'
-                                    }}
+                                <button 
+                                    onClick={() => handleTabChange('pending')} 
+                                    style={{ padding: '10px 20px', backgroundColor: activeTab === 'pending' ? '#e74c3c' : '#f1f5f9', color: activeTab === 'pending' ? 'white' : '#64748b', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}
                                 >
-                                    未確認・処理待ち ({pendingStudents.length})
+                                    未確認・処理待ち ({pendingCount})
                                 </button>
-                                <button
-                                    onClick={() => handleTabChange('completed')}
-                                    style={{
-                                        padding: '10px 20px',
-                                        backgroundColor: activeTab === 'completed' ? '#10b981' : '#f1f5f9',
-                                        color: activeTab === 'completed' ? 'white' : '#64748b',
-                                        border: 'none',
-                                        borderRadius: '6px',
-                                        cursor: 'pointer',
-                                        fontWeight: 'bold',
-                                        transition: '0.2s'
-                                    }}
+                                <button 
+                                    onClick={() => handleTabChange('completed')} 
+                                    style={{ padding: '10px 20px', backgroundColor: activeTab === 'completed' ? '#10b981' : '#f1f5f9', color: activeTab === 'completed' ? 'white' : '#64748b', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}
                                 >
-                                    成績表生成完了・送信待機中 ({completedStudents.length})
+                                    成績表生成完了 ({completedStudents.length})
                                 </button>
                             </div>
 
-                            {/* 統合したテーブル領域 */}
+                            {/* テーブルコンポーネント (純粋なUI描画のみを担当) */}
                             <div style={{ flexGrow: 1, overflowY: 'auto' }}>
-                                {currentList.length === 0 ? (
-                                    <div style={{ padding: '40px 20px', textAlign: 'center', color: '#94a3b8', backgroundColor: '#f8fafc', borderRadius: '8px' }}>
-                                        {activeTab === 'pending' ? '未処理の生徒はいません。' : '完了した生徒はまだいません。'}
-                                    </div>
-                                ) : (
-                                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', opacity: activeTab === 'completed' ? 0.8 : 1 }}>
-                                        <thead style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
-                                            <tr>
-                                                <th style={{ padding: '12px', width: '50px' }}>No.</th>
-                                                <th style={{ padding: '12px' }}>生徒名</th>
-                                                <th style={{ padding: '12px' }}>総点</th>
-                                                <th style={{ padding: '12px' }}>クラス順位</th>
-                                                <th style={{ padding: '12px' }}>全校順位</th>
-                                                <th style={{ padding: '12px', textAlign: 'center' }}>
-                                                    {activeTab === 'pending' ? 'アクション' : '成績表'}
-                                                </th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {currentDisplayList.map((student, index) => (
-                                                <tr key={student.studentId} style={{ borderBottom: '1px solid #f1f5f9', backgroundColor: activeTab === 'completed' ? '#f8fafc' : 'white' }}>
-                                                    {/* 番号 */}
-                                                    <td style={{ padding: '12px', color: '#94a3b8', fontWeight: 'bold' }}>
-                                                        {startIndex + index + 1}
-                                                    </td>
-                                                    <td style={{ padding: '12px', fontWeight: 'bold', color: activeTab === 'completed' ? '#64748b' : '#333' }}>
-                                                        {student.studentName}
-                                                    </td>
-                                                    <td style={{ padding: '12px', color: activeTab === 'completed' ? '#64748b' : '#333' }}>
-                                                        {student.totalScore}点
-                                                    </td>
-                                                    <td style={{ padding: '12px', fontWeight: 'bold' }}>
-                                                        {student.classRank}位
-                                                    </td>
-                                                    <td style={{ padding: '12px', color: activeTab === 'completed' ? '#64748b' : '#333' }}>
-                                                        {student.overallRank}位
-                                                    </td>
-                                                    <td style={{ padding: '12px', textAlign: 'center' }}>
-                                                        
-                                                        {activeTab === 'pending' ? (
-                                                            <button 
-                                                                style={{ padding: '6px 12px', backgroundColor: '#3ea1b9', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}
-                                                                onClick={() => setSelectedStudent(student)}
-                                                            >
-                                                                プレビュー
-                                                            </button>
-                                                        ) : (
-                                                            <a
-                                                                href={student.fileUrl} 
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                style={{ 
-                                                                    color: '#3b82f6', 
-                                                                    textDecoration: 'underline', 
-                                                                    cursor: 'pointer', 
-                                                                    fontWeight: 'bold' 
-                                                                }}
-                                                            >
-                                                                成績表を見る
-                                                            </a>
-                                                        )}
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                )}
+                                <StudentTable 
+                                    list={currentDisplayList} 
+                                    activeTab={activeTab} 
+                                    startIndex={startIndex} 
+                                    onPreviewClick={setSelectedStudent} 
+                                />
                             </div>
 
-                            {/* pagination control*/}
-                            {currentList.length > 0 && (
-                                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginTop: '20px', paddingTop: '20px', borderTop: '1px solid #e2e8f0', gap: '15px' }}>
-                                    <button 
-                                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                                        disabled={currentPage === 1}
-                                        style={{ padding: '8px 16px', border: '1px solid #cbd5e1', borderRadius: '4px', backgroundColor: currentPage === 1 ? '#f8fafc' : 'white', cursor: currentPage === 1 ? 'not-allowed' : 'pointer', color: '#475569', fontWeight: 'bold' }}
-                                    >
-                                        前へ
-                                    </button>
-                                    <span style={{ color: '#64748b', fontWeight: 'bold', fontSize: '14px' }}>
-                                        {currentPage} / {totalPages} ページ
-                                    </span>
-                                    <button 
-                                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                                        disabled={currentPage === totalPages}
-                                        style={{ padding: '8px 16px', border: '1px solid #cbd5e1', borderRadius: '4px', backgroundColor: currentPage === totalPages ? '#f8fafc' : 'white', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer', color: '#475569', fontWeight: 'bold' }}
-                                    >
-                                        次へ
-                                    </button>
-                                </div>
+                            {/* ページネーションコンポーネント */}
+                            {studentsData.length > 0 && (
+                                <Pagination 
+                                    currentPage={currentPage} 
+                                    totalPages={totalPages} 
+                                    onPageChange={setCurrentPage} 
+                                />
                             )}
-
                         </div>
                     )}
                 </section>
             </main>
 
+            {/* ---------------- ポップアップ＆モーダル領域 ---------------- */}
+            
+            {/* 個別成績表のプレビュー＆編集モーダル */}
             {selectedStudent && (
                 <DraftPreview 
                     studentData={selectedStudent} 
                     examDate={currentExamDate}
                     onClose={() => setSelectedStudent(null)}
-                    onSuccess={handleGenerateSuccess}  
+                    onSuccess={(id, url) => {
+                        updateStudentSuccess(id, url); // Hookの関数で状態を「完了」に更新
+                        setSelectedStudent(null);      // モーダルを閉じる
+                    }}  
                 />
             )}
-            {showConfirmModal && (
-                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
-                    <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '12px', width: '400px', textAlign: 'center', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}>
-                        <h3 style={{ marginTop: 0, color: '#333' }}>一括送信の確認</h3>
-                        <p style={{ color: '#666', marginBottom: '25px' }}>
-                            <strong>{completedStudents.length}名</strong>の保護者に成績表を一括送信しますか？<br/>
-                            <span style={{ fontSize: '12px', color: '#e74c3c' }}>※この操作は取り消せません。</span>
-                        </p>
-                        <div style={{ display: 'flex', justifyContent: 'center', gap: '15px' }}>
-                            <button 
-                                onClick={() => setShowConfirmModal(false)}
-                                style={{ padding: '10px 20px', border: '1px solid #cbd5e1', backgroundColor: 'white', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', color: '#64748b' }}>
-                                キャンセル
-                            </button>
-                            <button 
-                                onClick={executeBatchSend}
-                                style={{ padding: '10px 20px', border: 'none', backgroundColor: '#3b82f6', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', color: 'white' }}>
-                                はい、送信します
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
 
-            {toastMessage && (
-                <div style={{ position: 'fixed', bottom: '30px', left: '50%', transform: 'translateX(-50%)', backgroundColor: '#334155', color: 'white', padding: '12px 24px', borderRadius: '30px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', zIndex: 1001, fontWeight: 'bold', animation: 'fadeInOut 3s forwards' }}>
-                    {toastMessage}
-                </div>
-            )}
+            {/* 一括送信の最終確認モーダル */}
+            <ConfirmModal 
+                isOpen={showConfirmModal} 
+                title="一括送信の確認" 
+                onConfirm={executeBatchSend} 
+                onCancel={() => setShowConfirmModal(false)} 
+                confirmText="はい、送信します"
+            >
+                <strong>{completedStudents.length}名</strong>の保護者に成績表を一括送信しますか？<br/>
+                <span style={{ fontSize: '12px', color: '#e74c3c' }}>※この操作は取り消せません。</span>
+            </ConfirmModal>
+
+            {/* 画面下部のトースト通知 */}
+            <Toast message={toastMessage} />
         </div>
     );
 }

@@ -1,62 +1,78 @@
-import { useState, useEffect } from 'react';
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'; //ルーティング用ライブラリをインポート
+import { useAuth } from './hooks/useAuth';
+import Header from './components/layout/Header';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 
-function App() {
-    // 現在ログインしている講師ID
-    const [loggedInTeacher, setLoggedInTeacher] = useState(null);
-
-    // login session 維持
-    useEffect(() => {
-        const savedTeacher = localStorage.getItem('teacher');
-        const token = localStorage.getItem('token');
-
-        if (savedTeacher && token) {
-            try {
-                const teacherData = JSON.parse(savedTeacher);
-                setLoggedInTeacher(teacherData);
-            }catch (error) {
-                console.log("local storage data parsing error: ", error);
-            }
-        }
-    }, []); // 最小のレンダリングに一度だけ実行する
-
-    const handleLoginSuccess = (teacherData) => {
-        setLoggedInTeacher(teacherData);
+/**
+ * ログインしていないユーザーが保護されたページ（ダッシュボードなど）に
+ * アクセスしようとした場合、強制的にログイン画面へリダイレクトするコンポーネント
+ */
+const ProtectedRoute = ({ children, loggedInTeacher }) => {
+    if (!loggedInTeacher) {
+        return <Navigate to="/login" replace />; // ログイン画面へ弾く
     }
+    return children; // 認証済みならそのまま表示
+};
 
-    const handleLogout = () => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('teacher');
-        setLoggedInTeacher(null);
+
+/**
+ * アプリケーションの最上位コンポーネント (ルート)
+ * 認証状態に応じて、表示する画面（Login or Dashboard）を切り替えます。
+ */
+function App() {
+    // 認証ロジックをカスタムフックから呼び出すだけ！
+    const { loggedInTeacher, login, logout, isAuthChecking } = useAuth();
+
+    // セッション復元中（F5更新時など）は、一瞬だけローディング画面を見せて
+    // ログイン画面がチラつくのを防ぎます。
+    if (isAuthChecking) {
+        return <div style={{ height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>読み込み中...</div>;
     }
 
 return(
-        <div style={{ minHeight: '100vh', backgroundColor: '#f4f7f6', margin: 0, padding: 0 }}>
-            {!loggedInTeacher ? 
-                (<Login onLoginSuccess={handleLoginSuccess}/>
-            ) : (
-                <div style={{ width: '100%' }}>
+        <Router>
+            <div style={{ minHeight: '100vh', backgroundColor: '#f4f7f6', margin: 0, padding: 0 }}>
+                
+                {/* URLごとの表示ルール(Routes)を定義 */}
+                <Routes>
                     
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px 30px', backgroundColor: 'white', borderBottom: '1px solid #e2e8f0' }}>
-                        <h1 style={{ margin: 0, fontSize: '22px', color: '#1e293b' }}>成績表送信システム</h1>
-                        
-                        {/* logout button */}
-                        <button
-                            onClick={handleLogout}
-                            style={{ padding: '8px 16px', backgroundColor: '#7f7d8e', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', transition: '0.2s' }}
-                        >
-                            ログアウト
-                        </button>
-                    </div>
+                    {/* ルート1: ログイン画面 (/login) */}
+                    <Route 
+                        path="/login" 
+                        element={
+                            // 既にログイン済みの人が /login に来たら、自動でダッシュボード(/)に飛ばす
+                            loggedInTeacher ? <Navigate to="/Dashboard" replace /> : <Login onLoginSuccess={login}/>
+                        } 
+                    />
+                    
+                    {/* ルート2: メインダッシュボード (/) */}
+                    <Route 
+                        path="/Dashboard" 
+                        element={
+                            // ProtectedRoute で包むことで、未ログインのアクセスをブロック
+                            <ProtectedRoute loggedInTeacher={loggedInTeacher}>
+                                <div style={{ width: '100%' }}>
+                                    <Header onLogout={logout} />
+                                    <div style={{ padding: '20px' }}>
+                                        <Dashboard teacher={loggedInTeacher}/>
+                                    </div>
+                                </div> 
+                            </ProtectedRoute>
+                        } 
+                    />
 
-                    {/*成績アラームを受信するdashboardコンポナント */}
-                    <div style={{ padding: '20px' }}>
-                        <Dashboard teacher={loggedInTeacher}/>
-                    </div>
-                </div> 
-            )}
-        </div>
+                    {/* ルート3: 存在しないURL (404対策) */}
+                    <Route 
+                        path="*" 
+                        element={<Navigate to="/Dashboard" replace />} 
+                    />
+                    
+                </Routes>
+                
+            </div>
+        </Router>
     );
 }
 
