@@ -1,7 +1,8 @@
 from fastapi import APIRouter, BackgroundTasks, Depends
 from services.monitor import check_new_scores
 from dependencies.auth import get_current_teacher # 🌟 core/dependencies に移動したauthをインポート
-from services.draft_service import get_preview_data
+from services.draft_service import get_preview_data, update_score_and_recalculate
+from schemas.draft import ScoreUpdateRequest
 
 router = APIRouter(prefix="/api/drafts", tags=["Drafts"])
 
@@ -36,3 +37,20 @@ def get_class_draft_previews(teacher: dict = Depends(get_current_teacher)):
     全ての複雑なロジックは draft_service に委譲しています。
     """
     return get_preview_data(teacher["class_id"])
+
+@router.put("/update-score")
+def update_student_score(request: ScoreUpdateRequest, teacher: dict = Depends(get_current_teacher)):
+    """
+    成績表プレビュ-画面からの「点数修正」リクエストを処理する。
+    修正後、影響を受ける全生徒の順位・偏差値を再計算します。
+    """
+    result = update_score_and_recalculate(request)
+
+    # 再計算が終わったらUIを更新するために最新のプレービューデータを返してあげる
+    fresh_data = get_preview_data(teacher["class_id"])
+
+    return {
+        "status": "success",
+        "message": result["message"],
+        "fresh_data": fresh_data["data"]
+    }

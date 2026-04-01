@@ -12,7 +12,7 @@ from core.database import engine
 
 def insert_past_exam(month: int):
     year = datetime.date.today().year
-    exam_date = datetime.date(year, month, 15)
+    exam_date = datetime.date(year, month, 1)
 
     with engine.begin() as conn:
         existing = conn.execute(text("SELECT id FROM 成績表 WHERE 実施日 = :exam_date LIMIT 1"), {"exam_date": exam_date}).fetchone()

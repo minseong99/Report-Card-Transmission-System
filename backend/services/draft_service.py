@@ -4,6 +4,7 @@ from botocore.client import Config
 from core.database import engine
 from core.config import settings # 🌟 環境変数を中央管理から取得
 import crud.draft_crud as crud
+from schemas.draft import ScoreUpdateRequest
 
 # ==========================================
 # S3クライアント設定 (保護者用URL生成のため)
@@ -87,7 +88,28 @@ def get_preview_data(class_id: int):
                 "currentScores": current_scores,
                 "trendData": trend_data,
                 "status": st.確認ステータス,
-                "fileUrl": file_url
+                "fileUrl": file_url,
+                "score_id": st.score_id
             })
         
         return {"status": "success", "exam_date": str(latest_date), "data": result_data}
+    
+def update_score_and_recalculate(request: ScoreUpdateRequest):
+    """
+    点数を修正し、全生徒の関連する順位(科目・クラス・統合)を自動再計算するサービス。
+    トランザクジョンを利用して、途中で失敗した場合は全てロールバックします。
+    """
+    
+    # engine.begin()は自動的にコミット・ロールバックを管理します。
+    with engine.begin() as conn:
+        # 1. 点数を修正
+        for subject_name, new_score in request.updated_scores.items():
+            crud.update_subject_score(conn, request.score_id, subject_name, new_score)
+
+        # 2. 該当試験日の全生徒の「偏差値」を　再計算
+        crud.recalculate_hensachi(conn, request.exam_date)
+
+        # 3. この試験日の全生徒の順位を再計算
+        crud.recaculate_all_ranks(conn, request.exam_date)
+
+    return {"status": "success", "message": "点数と全体の順位が正常に再計算されました。" }
