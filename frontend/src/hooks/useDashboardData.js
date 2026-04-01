@@ -139,6 +139,10 @@ export function useDashboardData(class_id) {
             onError("ネットワークエラーが発生しました。(通信エラー)");
         }
     };
+    // 点数修正後、サーバから受けた最新情報と更新する
+    const refreshStudentsData = (freshData) => {
+        setStudentsData(freshData);
+    };
 
 
     // UIで使うものだけをスッキリと返す
@@ -147,6 +151,7 @@ export function useDashboardData(class_id) {
         studentsData,
         currentExamDate,
         updateStudentSuccess,
-        sendBatchReports
+        sendBatchReports,
+        refreshStudentsData
     };
 }

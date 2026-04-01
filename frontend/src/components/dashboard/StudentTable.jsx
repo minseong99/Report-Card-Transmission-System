@@ -33,7 +33,7 @@ export default function StudentTable({ list, activeTab, startIndex, onPreviewCli
                         <td style={{ padding: '12px', color: '#94a3b8', fontWeight: 'bold' }}>{startIndex + index + 1}</td>
                         <td style={{ padding: '12px', fontWeight: 'bold', color: activeTab === 'completed' ? '#64748b' : '#333' }}>{student.studentName}</td>
                         <td style={{ padding: '12px', color: activeTab === 'completed' ? '#64748b' : '#333' }}>{student.totalScore}点</td>
-                        <td style={{ padding: '12px', fontWeight: 'bold', color: activeTab === 'pending' ? '#e74c3c' : '#64748b' }}>{student.classRank}位</td>
+                        <td style={{ padding: '12px', color: activeTab === 'pending' ? '#64748b' : '#333' }}>{student.classRank}位</td>
                         <td style={{ padding: '12px', color: activeTab === 'completed' ? '#64748b' : '#333' }}>{student.overallRank}位</td>
                         <td style={{ padding: '12px', textAlign: 'center' }}>
                             {activeTab === 'pending' ? (

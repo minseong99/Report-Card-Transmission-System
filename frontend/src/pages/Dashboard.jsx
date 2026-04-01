@@ -23,7 +23,8 @@ export default function Dashboard({ teacher }) {
         studentsData,       // 担当クラスの全生徒の成績データ
         currentExamDate,    // 最新の試験実施日
         updateStudentSuccess, // 個別成績表の生成成功時の状態更新関数
-        sendBatchReports    // 一括送信APIを呼び出す関数
+        sendBatchReports,    // 一括送信APIを呼び出す関数
+        refreshStudentsData  // 点数Update
     } = useDashboardData(teacher.class_id);
 
     // ==========================================
@@ -246,6 +247,11 @@ export default function Dashboard({ teacher }) {
                     onSuccess={(id, url) => {
                         updateStudentSuccess(id, url); // Hookの関数で状態を「完了」に更新
                         setSelectedStudent(null);      // モーダルを閉じる
+                    }}
+                    onScoreUpdated={(freshData) => {
+                        refreshStudentsData(freshData);
+                        const updatedSelected = freshData.find(s => s.studentId === selectedStudent.studentId);
+                        setSelectedStudent(updatedSelected);
                     }}  
                 />
             )}
