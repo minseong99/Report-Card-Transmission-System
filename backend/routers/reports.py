@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, BackgroundTasks
 
 from dependencies.auth import get_current_teacher
-from schemas.report import ConfirmReportRequest, BatchSendRequest
-from services.report_service import generate_report_workflow
+from schemas.report import ConfirmReportRequest, BatchSendRequest, BulkConfirmRequest
+from services.report_service import generate_report_workflow, proccess_bulk_report_generation
 from services.notification_service import process_batch_notifications
 
 """
@@ -48,4 +48,21 @@ def send_batch_reports(request: BatchSendRequest, background_tasks: BackgroundTa
     return {
         "status": "success",
         "message": f"{len(request.student_ids)}件の成績表を保護者へ送信開始しました。"
+    }
+
+@router.post("/confirm-class")
+def confirm_class_reports(request: BulkConfirmRequest, background_tasks: BackgroundTasks, teacher: dict = Depends(get_current_teacher)):
+    """
+    スマートモーダルから呼ばれる、クラス全員分の成績表一括生成API
+    """
+    # サービスの関数をバックグラウンドに登録
+    background_tasks.add_task(
+        proccess_bulk_report_generation,
+        class_id=teacher["class_id"],
+        exam_date=request.exam_date
+    )
+
+    return {
+        "status": "success",
+        "message": "クラス全員分の成績表の自動生成をバックグラウンドで開始しました。しばらくお待ちください。"
     }

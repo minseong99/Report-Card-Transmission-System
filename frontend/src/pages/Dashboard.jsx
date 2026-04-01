@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import './Dashboard.css';
 
 // カスタムフックと分離されたUIコンポーネントをインポート
@@ -24,7 +24,8 @@ export default function Dashboard({ teacher }) {
         currentExamDate,    // 最新の試験実施日
         updateStudentSuccess, // 個別成績表の生成成功時の状態更新関数
         sendBatchReports,    // 一括送信APIを呼び出す関数
-        refreshStudentsData  // 点数Update
+        refreshStudentsData,  // 点数Update
+        smartModalData, setSmartModalData, generateClassReports, isBulkGenerating
     } = useDashboardData(teacher.class_id);
 
     // ==========================================
@@ -37,6 +38,15 @@ export default function Dashboard({ teacher }) {
     const [toastMessage, setToastMessage] = useState("");  // トースト通知のメッセージ内容
 
     const itemsPerPage = 10; // 1ページあたりの表示件数
+
+    const prevGenerating = useRef(isBulkGenerating); // 以前Loading状態記憶
+
+    useEffect(() => {
+        if(prevGenerating.current === true && isBulkGenerating === false){
+            setActiveTab('completed')
+        }
+        prevGenerating.current = isBulkGenerating;
+    }, [isBulkGenerating]);
 
     /**
      * トースト通知を画面下部に表示し、3秒後に自動で消すヘルパー関数
@@ -103,7 +113,7 @@ export default function Dashboard({ teacher }) {
 
         // 安全装置: Hookから関数が正しく取得できているか確認
         if (typeof sendBatchReports !== 'function') {
-            alert("🚨 フロントエンドエラー: sendBatchReports 関数が見つかりません。useDashboardData.js との連携を確認してください。");
+            alert("フロントエンドエラー: sendBatchReports 関数が見つかりません。useDashboardData.js との連携を確認してください。");
             return;
         }
 
@@ -129,8 +139,33 @@ export default function Dashboard({ teacher }) {
     // ==========================================
     return (
         <div className="dashboard-container">
+            {/* ---------------- 全体画面Loading overlay ---------------- */}
+            {isBulkGenerating && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
+                    backgroundColor: 'rgba(255, 255, 255, 0.8)', backdropFilter: 'blur(8px)',
+                    display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center',
+                    zIndex: 10000, 
+                    cursor: 'wait'
+                }}>
+                    <div className="loading-spinner" style={{
+                        width: '50px', height: '50px', border: '5px solid #e2e8f0',
+                        borderTop: '5px solid #3b82f6', borderRadius: '50%',
+                        animation: 'spin 1s linear infinite', marginBottom: '20px'
+                    }}></div>
+                    <h2 style={{ color: '#1e293b', margin: '0' }}>成績表生成中。。。</h2>
+                    <p style={{ color: '#64748b', marginTop: '10px' }}>
+                        {teacher.class_id}組学生たちの生成表を生成しています。お待ちしてください。
+                    </p>
+                    
+                    <style>{`
+                        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+                        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+                    `}</style>
+                </div>
+            )}
             {/* ---------------- ヘッダー領域 ---------------- */}
-            <header className="dashboard-header">
+            <header className="dashboard-header" style={{ opacity: isBulkGenerating ? 0.5 : 1}}>
                 <div className="header-left">
                     <h2>{teacher.name} 先生のワークスペース</h2>
                     <span className="class-badge">担当: {teacher.class_id}組</span>
@@ -140,14 +175,20 @@ export default function Dashboard({ teacher }) {
                 </div>
             </header>
 
-            <main className="dashboard-layout">
+            <main className="dashboard-layout" style={{ 
+                        // 採点完了モーダルがある時裏側をblur処理
+                        filter: (smartModalData || isBulkGenerating) ? 'blur(50px) grayscale(50%)' : 'none', 
+                        transition: 'filter 0.3s ease',
+                        pointerEvents: isBulkGenerating ? 'none' : 'auto'  // 裏側クリック防ぐ
+                }}>
                 {/* ---------------- 左側: アラームサイドバー ---------------- */}
-                <aside className="sidebar">
+                
+                <aside className="sidebar" >
                     <section className="status-card">
                         <h3>アラーム</h3>
                         <div className="alarm-list">
                             {alarms.length === 0 ? (
-                                <div className="no-data">現在、処理中のデータはありません。</div>
+                                <div className="no-data">現在、アラームがありません。</div>
                             ) : (
                                 alarms.map((alarm) => (
                                     <div key={alarm.id} className={`alert-box ${alarm.type}`}>
@@ -235,7 +276,69 @@ export default function Dashboard({ teacher }) {
                     )}
                 </section>
             </main>
+            {smartModalData && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
+                    backgroundColor: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)',
+                    display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999,
+                    animation: 'fadeIn 0.3s ease-out'
+                }}>
+                    <div style={{
+                        backgroundColor: 'white', padding: '30px 40px', borderRadius: '16px',
+                        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+                        width: '500px', maxWidth: '90%', textAlign: 'center'
+                    }}>
+                        <h2 style={{ margin: '0 0 15px 0', color: '#1e293b', fontSize: '22px' }}>
+                            採点がすべて完了しました！
+                        </h2>
+                        <p style={{ color: '#475569', fontSize: '15px', lineHeight: '1.6', marginBottom: '30px' }}>
+                            {smartModalData.examDate}実施分のデータ入力が完了しました。<br/>
+                            システムが分析したデータを利用して、<br/>
+                            <strong>担当クラス全員の成績表を全自動で生成</strong>しますか？
+                        </p>
 
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            {/* Primary Action: 一括自動生成 */}
+                            <button 
+                                onClick={() => {
+                                    generateClassReports(
+                                        smartModalData.examDate,
+                                        (msg) => { showToast(`${msg}`); setSmartModalData(null); },
+                                        (err) => { showToast(`${err}`); setSmartModalData(null); }
+                                    );
+                                }}
+                                style={{
+                                    backgroundColor: '#3b82f6', color: 'white', padding: '14px',
+                                    borderRadius: '8px', border: 'none', fontSize: '15px', fontWeight: 'bold',
+                                    cursor: 'pointer', boxShadow: '0 4px 6px -1px rgba(59, 130, 246, 0.3)',
+                                    transition: 'transform 0.1s'
+                                }}
+                                onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.98)'}
+                                onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                            >
+                                はい、クラス全員分を1秒で自動生成する 
+                            </button>
+
+                            {/* Secondary Action */}
+                            <button 
+                                onClick={() => {
+                                    setSmartModalData(null); 
+                                    handleTabChange('pending');
+                                }}
+                                style={{
+                                    backgroundColor: 'white', color: '#64748b', padding: '12px',
+                                    borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px', fontWeight: 'bold',
+                                    cursor: 'pointer', transition: 'background-color 0.2s'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
+                                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
+                            >
+                                いいえ、個別に確認・修正してから生成する
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
             {/* ---------------- ポップアップ＆モーダル領域 ---------------- */}
             
             {/* 個別成績表のプレビュー＆編集モーダル */}

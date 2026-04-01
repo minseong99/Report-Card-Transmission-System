@@ -14,12 +14,11 @@ def mock_send_email_and_sms(parent_name: str, student_name: str, exam_date: str,
     {exam_date}実施の模擬試験 ({student_name}様)の成績表結果が出ました。
     以下のURLより、PDFの成績通知書をご確認ください。
 
-    🔗 成績表: {file_url}
+    成績表: {file_url}
     from 〇〇学習塾
     =========================================
     """
     print(message, flush=True) # ターミナルに即時出力
-    time.sleep(0.5)
 
 def process_batch_notifications(student_ids: list[int], exam_date: str):
     print(f"\n{len(student_ids)}名分の成績表一括送信プロセスを開始します...", flush=True)
