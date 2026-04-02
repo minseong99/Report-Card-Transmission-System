@@ -72,7 +72,7 @@ export default function ScoreChart({ trendData, currentScores }) {
                             activeLines[subject] && (
                                 <Line 
                                     key={subject} type="monotone" dataKey={subject} 
-                                    stroke={color} strokeWidth={3} activeDot={{ r: 6 }} 
+                                    stroke={color} strokeWidth={1} activeDot={{ r: 6 }} 
                                 />
                             )
                         ))}

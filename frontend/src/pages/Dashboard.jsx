@@ -37,6 +37,8 @@ export default function Dashboard({ teacher }) {
     const [showConfirmModal, setShowConfirmModal] = useState(false); // 一括送信の確認モーダル表示フラグ
     const [toastMessage, setToastMessage] = useState("");  // トースト通知のメッセージ内容
 
+    const [showBulkGenerateModal, setShowBulkGenerateModal] = useState(false); // 一括生成確認モダール
+
     const itemsPerPage = 10; // 1ページあたりの表示件数
 
     const prevGenerating = useRef(isBulkGenerating); // 以前Loading状態記憶
@@ -134,6 +136,22 @@ export default function Dashboard({ teacher }) {
         );
     };
 
+    const executeBulkGenerate = () => {
+        setShowBulkGenerateModal(true); 
+        
+        if (!currentExamDate) {
+            showToast("試験日付情報がありません。");
+            return;
+        }
+
+        generateClassReports(
+            currentExamDate,
+            (msg) => showToast(msg), 
+            (err) => showToast(err)  
+        );
+        setShowBulkGenerateModal(false);
+    };
+
     // ==========================================
     // 5. 画面のレンダリング (View)
     // ==========================================
@@ -171,7 +189,6 @@ export default function Dashboard({ teacher }) {
                     <span className="class-badge">担当: {teacher.class_id}組</span>
                 </div>
                 <div className="header-right">
-                    <span className="live-status"><span className="dot"></span> システム同期中</span>
                 </div>
             </header>
 
@@ -208,6 +225,23 @@ export default function Dashboard({ teacher }) {
                             {activeTab === 'completed' ? '成績表送信待機中一覧' : '成績草案一覧'}
                             {currentExamDate && `(${currentExamDate} 実施)`}
                         </h3>
+                        <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+                                {activeTab === 'pending' && pendingCount > 0 && (
+                                    <button 
+                                        onClick={() => executeBulkGenerate()} 
+                                        disabled={isBulkGenerating}
+                                        style={{ 
+                                            backgroundColor: isBulkGenerating ? '#cbd5e1' : '#58595b', 
+                                            color: 'white', border: 'none', padding: '10px 20px', borderRadius: '6px', 
+                                            fontWeight: 'bold', transition: '0.2s',
+                                            cursor: isBulkGenerating ? 'not-allowed' : 'pointer',
+                                            boxShadow: '0 4px 6px -1px rgba(59, 130, 246, 0.3)'
+                                        }}
+                                    >
+                                        {isBulkGenerating ? '生成中...' : '成績表一括生成'}
+                                    </button>
+                                )}
+                            </div>
                         
                         {/* 完了タブの時のみ、一括送信ボタンを表示 */}
                         {activeTab === 'completed' && (
@@ -242,17 +276,18 @@ export default function Dashboard({ teacher }) {
                             <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
                                 <button 
                                     onClick={() => handleTabChange('pending')} 
-                                    style={{ padding: '10px 20px', backgroundColor: activeTab === 'pending' ? '#e74c3c' : '#f1f5f9', color: activeTab === 'pending' ? 'white' : '#64748b', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}
+                                    style={{ padding: '10px 20px', backgroundColor: activeTab === 'pending' ? '#dbd0cf' : '#f1f5f9', color: activeTab === 'pending' ? 'white' : '#64748b', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}
                                 >
                                     未確認・処理待ち ({pendingCount})
                                 </button>
                                 <button 
                                     onClick={() => handleTabChange('completed')} 
-                                    style={{ padding: '10px 20px', backgroundColor: activeTab === 'completed' ? '#10b981' : '#f1f5f9', color: activeTab === 'completed' ? 'white' : '#64748b', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}
+                                    style={{ padding: '10px 20px', backgroundColor: activeTab === 'completed' ? '#dbd0cf' : '#f1f5f9', color: activeTab === 'completed' ? 'white' : '#64748b', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}
                                 >
                                     成績表生成完了 ({completedStudents.length})
                                 </button>
                             </div>
+
 
                             {/* テーブルコンポーネント (純粋なUI描画のみを担当) */}
                             <div style={{ flexGrow: 1, overflowY: 'auto' }}>

@@ -45,7 +45,7 @@ export const Pagination = ({ currentPage, totalPages, onPageChange }) => {
                 前へ
             </button>
             <span style={{ color: '#64748b', fontWeight: 'bold', fontSize: '14px' }}>
-                {currentPage} / {totalPages} ページ
+                {currentPage} / {totalPages}
             </span>
             <button 
                 onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}

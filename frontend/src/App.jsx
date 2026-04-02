@@ -32,30 +32,29 @@ function App() {
     }
 
 return(
-        <Router>
+    <Router>
             <div style={{ minHeight: '100vh', backgroundColor: '#f4f7f6', margin: 0, padding: 0 }}>
-                
-                {/* URLごとの表示ルール(Routes)を定義 */}
                 <Routes>
                     
                     {/* ルート1: ログイン画面 (/login) */}
                     <Route 
                         path="/login" 
                         element={
-                            // 既にログイン済みの人が /login に来たら、自動でダッシュボード(/)に飛ばす
-                            loggedInTeacher ? <Navigate to="/Dashboard" replace /> : <Login onLoginSuccess={login}/>
+                            loggedInTeacher 
+                                ? <Navigate to={`/Dashboard/${loggedInTeacher.class_id}`} replace /> 
+                                : <Login onLoginSuccess={login}/>
                         } 
                     />
                     
-                    {/* ルート2: メインダッシュボード (/) */}
+                    {/* ルート2: メインダッシュボード (URLにクラスIDを含める) */}
                     <Route 
-                        path="/Dashboard" 
+                        path="/Dashboard/:classId" 
                         element={
-                            // ProtectedRoute で包むことで、未ログインのアクセスをブロック
                             <ProtectedRoute loggedInTeacher={loggedInTeacher}>
                                 <div style={{ width: '100%' }}>
                                     <Header onLogout={logout} />
                                     <div style={{ padding: '20px' }}>
+                                        {/* Dashboardコンポーネントには今まで通りteacherオブジェクトを渡せばOKです */}
                                         <Dashboard teacher={loggedInTeacher}/>
                                     </div>
                                 </div> 
@@ -63,14 +62,23 @@ return(
                         } 
                     />
 
-                    {/* ルート3: 存在しないURL (404対策) */}
+                    {/* ルート3: ベースURL (/) にアクセスした時の親切なリダイレクト */}
+                    <Route 
+                        path="/" 
+                        element={
+                            loggedInTeacher 
+                                ? <Navigate to={`/Dashboard/${loggedInTeacher.class_id}`} replace /> 
+                                : <Navigate to="/login" replace />
+                        } 
+                    />
+
+                    {/* ルート4: 存在しないURL (404対策) */}
                     <Route 
                         path="*" 
-                        element={<Navigate to="/Dashboard" replace />} 
+                        element={<Navigate to="/login" replace />} 
                     />
                     
                 </Routes>
-                
             </div>
         </Router>
     );

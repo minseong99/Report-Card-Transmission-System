@@ -19,9 +19,9 @@ export default function StudentTable({ list, activeTab, startIndex, onPreviewCli
                 <tr>
                     <th style={{ padding: '12px', width: '50px' }}>No.</th>
                     <th style={{ padding: '12px' }}>生徒名</th>
-                    <th style={{ padding: '12px' }}>総点</th>
+                    {/* <th style={{ padding: '12px' }}>総点</th>
                     <th style={{ padding: '12px' }}>クラス順位</th>
-                    <th style={{ padding: '12px' }}>全校順位</th>
+                    <th style={{ padding: '12px' }}>全校順位</th> */}
                     <th style={{ padding: '12px', textAlign: 'center' }}>
                         {activeTab === 'pending' ? 'アクション' : '成績表'}
                     </th>
@@ -32,13 +32,13 @@ export default function StudentTable({ list, activeTab, startIndex, onPreviewCli
                     <tr key={student.studentId} style={{ borderBottom: '1px solid #f1f5f9', backgroundColor: activeTab === 'completed' ? '#f8fafc' : 'white' }}>
                         <td style={{ padding: '12px', color: '#94a3b8', fontWeight: 'bold' }}>{startIndex + index + 1}</td>
                         <td style={{ padding: '12px', fontWeight: 'bold', color: activeTab === 'completed' ? '#64748b' : '#333' }}>{student.studentName}</td>
-                        <td style={{ padding: '12px', color: activeTab === 'completed' ? '#64748b' : '#333' }}>{student.totalScore}点</td>
+                        {/* <td style={{ padding: '12px', color: activeTab === 'completed' ? '#64748b' : '#333' }}>{student.totalScore}点</td>
                         <td style={{ padding: '12px', color: activeTab === 'pending' ? '#64748b' : '#333' }}>{student.classRank}位</td>
-                        <td style={{ padding: '12px', color: activeTab === 'completed' ? '#64748b' : '#333' }}>{student.overallRank}位</td>
+                        <td style={{ padding: '12px', color: activeTab === 'completed' ? '#64748b' : '#333' }}>{student.overallRank}位</td> */}
                         <td style={{ padding: '12px', textAlign: 'center' }}>
                             {activeTab === 'pending' ? (
                                 <button 
-                                    style={{ padding: '6px 12px', backgroundColor: '#3ea1b9', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}
+                                    style={{ padding: '6px 12px', backgroundColor: '#a7adae', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}
                                     onClick={() => onPreviewClick(student)}
                                 >
                                     プレビュー
