@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
 /**
  * ダッシュボードのデータ取得と状態管理を行うカスタムフック
@@ -19,74 +19,69 @@ export function useDashboardData(class_id) {
         return false;
     };
 
-    // 1. アラームのポーリング (30秒間隔)
-    useEffect(() => {
-        if (!class_id) return;
-
-        const checkStatus = async () => {
-            try {
-                const response = await fetch(`http://localhost:8000/api/notification/?t=${new Date().getTime()}`, {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('token')}`,
-                        'Cache-Control': 'no-cache'
-                    },
-                    cache: 'no-store'
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    setAlarms(data.alerts);
-                } else if (!handleAuthError(response.status)) {
-                    console.error("サーバ側エラー:", response.status);
+    const fetchAlarms = useCallback(async () => {
+        if(!class_id) return;
+        try {
+            const response = await fetch(`http://localhost:8000/api/notification/?t=${new Date().getTime()}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                    'Cache-Control': 'no-cache'
                 }
-            } catch (error) {
-                console.error("アラーム通信エラー:", error);
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                setAlarms(data.alerts);
+            } else {
+                handleAuthError(response.status);
             }
-        };
+        } catch (error) {
+            console.error("アラーム通信エラー:", error);
+        }
+    },[class_id]);
 
-        const intervalID = setInterval(checkStatus, 5000);
-        checkStatus();
-        
-        return () => clearInterval(intervalID);    
-    }, [class_id]);
-
-    // 2. 成績草案データの取得 (アラーム数が変化した時のみ)
-    useEffect(() => {
-        if (!class_id) return;
-
-        const fetchDrafts = async () => {
-            try {
-                const response = await fetch(`http://localhost:8000/api/drafts/preview/?t=${new Date().getTime()}`, {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('token')}`,
-                        'Cache-Control': 'no-cache'
-                    },
-                    cache: 'no-store'
-                });
-
-                if (response.ok) {
-                    const result = await response.json();
-                    if (result.data) {
-                        setStudentsData(result.data);
-                        setCurrentExamDate(result.exam_date);
-                    }
-                } else if (!handleAuthError(response.status)) {
-                    const errorData = await response.json();
-                    alert(`エラーが発生しました: ${errorData.detail || '不明なエラー'}`);
+    const fetchDrafts = useCallback(async () => {
+        if(!class_id) return;
+        try {
+            const response = await fetch(`http://localhost:8000/api/drafts/preview/?t=${new Date().getTime()}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                    'Cache-Control': 'no-cache'
                 }
-            } catch (error) {
-                console.error("プレビューデータ取得エラー:", error);
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                if (result.data) {
+                    setStudentsData(result.data);
+                    setCurrentExamDate(result.exam_date);
+                }
+            } else if (!handleAuthError(response.status)) {
+                const errorData = await response.json();
+                alert(`エラーが発生しました: ${errorData.detail || '不明なエラー'}`);
             }
-        };
-        const intervalID = setInterval(fetchDrafts, 5000);
+        } catch (error) {
+            console.error("プレビューデータ取得エラー:", error);
+        }
+    },[class_id]);
+
+
+    // ポーリング 
+    useEffect(() => {
+        fetchAlarms();
         fetchDrafts();
+        const alarmInterval = setInterval(fetchAlarms, 5000);
+        const draftInterval = setInterval(fetchDrafts, 5000);
+        return () =>{
+            clearInterval(alarmInterval);
+            clearInterval(draftInterval);
+        }
+    }, [fetchAlarms,fetchDrafts]);
 
-        return () => clearInterval(intervalID);
-    }, [class_id]);
 
-    // 3. 個別の成績表生成・確認成功時のアクション
+    // 個別の成績表生成・確認成功時のアクション
     const updateStudentSuccess = (studentId, fileUrl) => {
         setStudentsData(prevData => 
             prevData.map(student => 
@@ -98,7 +93,7 @@ export function useDashboardData(class_id) {
     };
 
     /**
-     * 4. 一括送信のAPI呼び出しと状態更新ロジック
+     * 一括送信のAPI呼び出しと状態更新ロジック
      * @param {Array<number>} studentIds - 送信対象の生徒IDリスト
      * @param {string} examDate - 試験実施日
      * @param {Function} onSuccess - 成功時にUI側で実行されるコールバック
@@ -116,8 +111,6 @@ export function useDashboardData(class_id) {
                 body: JSON.stringify({ student_ids: studentIds, exam_date: examDate })
             });
 
-            console.log("[Hook] バックエンドから応答を受信しました。ステータスコード:", response.status);
-
             if (response.ok) {
                 // 通信成功時: UIの再レンダリングのために内部Stateを「送信済」に更新
                 setStudentsData(prevData => 
@@ -127,6 +120,8 @@ export function useDashboardData(class_id) {
                             : student
                     )
                 );
+
+                setAlarms(prevAlarms => prevAlarms.filter(a => a.date != examDate));
                 // Dashboard.jsx に成功した人数を伝えてトーストを表示させる
                 onSuccess(studentIds.length);
             } else {
@@ -200,6 +195,7 @@ export function useDashboardData(class_id) {
             if(response.ok){
                 const result = await response.json();
                 setIsBulkGenerating(true);
+                fetchAlarms();
                 onSuccess(result.message);
             }else {
                 if(handleAuthError(response.status)) return;

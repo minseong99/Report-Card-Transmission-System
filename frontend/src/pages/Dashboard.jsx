@@ -193,7 +193,7 @@ export default function Dashboard({ teacher }) {
                                 alarms.map((alarm) => (
                                     <div key={alarm.id} className={`alert-box ${alarm.type}`}>
                                         <strong>{alarm.message}</strong>
-                                        <p>成績表草案を確認して生成してください。</p>
+                                        <p>生成された成績表を確認して送信してください。</p>
                                     </div>
                                 ))
                             )}
@@ -316,7 +316,7 @@ export default function Dashboard({ teacher }) {
                                 onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.98)'}
                                 onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
                             >
-                                はい、クラス全員分を1秒で自動生成する 
+                                はい、クラス全員分の生成教を自動生成する 
                             </button>
 
                             {/* Secondary Action */}
