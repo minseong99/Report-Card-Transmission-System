@@ -28,7 +28,7 @@
 * **Python / FastAPI**: 高速なAPIサーバーと非同期処理ルーティング
 * **SQLAlchemy**: ORMを用いた効率的なデータベース操作
 
-### Infrastructure & DevOps
+### Infrastructure 
 * **Docker / Docker Compose**: フロントエンド・バックエンド・DB・MinIOのコンテナ化による一貫した開発・実行環境の構築
 
 ## システムアの特徴
