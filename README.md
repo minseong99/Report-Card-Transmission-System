@@ -28,6 +28,10 @@
 * **Python / FastAPI**: 高速なAPIサーバーと非同期処理ルーティング
 * **SQLAlchemy**: ORMを用いた効率的なデータベース操作
 
+### データベース
+* **mysql** : 学生、保護者、講師の情報ストアー
+* **MinIO** : 成績表をストアーするオブジェクトストレージ
+
 ### Infrastructure 
 * **Docker / Docker Compose**: フロントエンド・バックエンド・DB・MinIOのコンテナ化による一貫した開発・実行環境の構築
 
